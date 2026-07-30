@@ -1,0 +1,19 @@
+version: '3.4'
+
+services:
+  sou-instrutor-db:
+    container_name: db-mandecoders
+    image: postgres:latest
+    hostname: localhost
+    ports:
+      - 5432:5432
+    environment:
+      - POSTGRES_USER=user_mandecoders
+      - POSTGRES_PASSWORD=senhaS3creta
+      - POSTGRES_DB=db_mandecoders
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge

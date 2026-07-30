@@ -1,0 +1,447 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// ENUMS - Authorization & Status
+// ============================================================================
+
+enum Role {
+  USER
+  ADMIN
+  PROFESSIONAL
+  COMPANY
+}
+
+enum CompanyRole {
+  OWNER
+  ADMIN
+  MANAGER
+  MEMBER
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  REMOVED
+}
+
+// ============================================================================
+// ENUMS - Preferences & Configuration
+// ============================================================================
+
+enum Language {
+  PT_BR
+  EN_US
+  ES_ES
+}
+
+enum Theme {
+  LIGHT
+  DARK
+  SYSTEM
+}
+
+enum SocialProvider {
+  GITHUB
+  LINKEDIN
+}
+
+// ============================================================================
+// ENUMS - Features & Operations
+// ============================================================================
+
+enum SenderType {
+  user
+  support
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum TokenType {
+  EMAIL_VERIFICATION
+  PASSWORD_RESET
+  EMAIL_CHANGE
+}
+
+enum UserTrackStatus {
+  STARTED
+  COMPLETED
+}
+
+// ============================================================================
+// MODELS - User & Authentication
+// ============================================================================
+
+model User {
+  id              String     @id @default(uuid(7)) @db.Uuid
+  email           String     @unique @db.VarChar(255)
+  password        String     @db.Text
+  firstName       String     @db.VarChar(255)
+  lastName        String?    @db.VarChar(255)
+  avatar          String?    @db.VarChar(1000)
+  role            Role       @default(USER)
+  status          UserStatus @default(ACTIVE)
+  emailVerified   Boolean    @default(false)
+  emailVerifiedAt DateTime?  @db.Timestamp(6)
+  lastLoginAt     DateTime?  @db.Timestamp(6)
+  createdAt       DateTime   @default(now()) @db.Timestamp(6)
+  updatedAt       DateTime   @updatedAt @db.Timestamp(6)
+  deletedAt       DateTime?  @db.Timestamp(6)
+
+  // Relations
+  settings                Settings?
+  companyMembers          CompanyMember[]
+  socialAccounts          SocialAccount[]
+  verificationTokens      VerificationToken[]
+  refreshTokens           RefreshToken[]
+  passwordResetTokens     PasswordResetToken[]
+  tickets                 TicketHelpdesk[]
+  ticketMessages          TicketMessage[]
+
+  @@index([email], name: "idx_user_email")
+  @@index([status], name: "idx_user_status")
+  @@index([deletedAt], name: "idx_user_deleted_at")
+  @@map("users")
+}
+
+model Settings {
+  id                   String   @id @default(uuid(7)) @db.Uuid
+  userId               String   @unique @db.Uuid
+  theme                Theme    @default(SYSTEM)
+  language             Language @default(PT_BR)
+  notificationsEnabled Boolean  @default(true)
+  emailNotifications   Boolean  @default(true)
+  pushNotifications    Boolean  @default(true)
+  emailFrequency       String   @default("DAILY") @db.VarChar(20)
+  dailyGoalMinutes     Int      @default(60)
+  preferences          Json?
+  updatedAt            DateTime @updatedAt @db.Timestamp(6)
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([userId], name: "idx_settings_user_id")
+  @@map("settings")
+}
+
+model SocialAccount {
+  id             String         @id @default(uuid(7)) @db.Uuid
+  userId         String         @db.Uuid
+  provider       SocialProvider
+  providerUserId String         @db.VarChar(255)
+  username       String?        @db.VarChar(255)
+  displayName    String?        @db.VarChar(255)
+  avatarUrl      String?        @db.VarChar(1000)
+  profileUrl     String?        @db.VarChar(1000)
+  accessToken    String         @db.Text
+  refreshToken   String?        @db.Text
+  expiresAt      DateTime?      @db.Timestamp(6)
+  connectedAt    DateTime       @default(now()) @db.Timestamp(6)
+  lastSync       DateTime?      @db.Timestamp(6)
+  createdAt      DateTime       @default(now()) @db.Timestamp(6)
+  updatedAt      DateTime       @updatedAt @db.Timestamp(6)
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@unique([provider, providerUserId], name: "uq_social_provider_user_id")
+  @@index([userId], name: "idx_social_account_user_id")
+  @@index([provider], name: "idx_social_account_provider")
+  @@map("social_accounts")
+}
+
+model VerificationToken {
+  id        String    @id @default(uuid(7)) @db.Uuid
+  userId    String    @db.Uuid
+  code      String    @db.VarChar(6)
+  tokenType TokenType @default(EMAIL_VERIFICATION)
+  expiresAt DateTime  @db.Timestamp(6)
+  used      Boolean   @default(false)
+  createdAt DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt DateTime  @updatedAt @db.Timestamp(6)
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([code], name: "idx_verification_token_code")
+  @@index([userId], name: "idx_verification_token_user_id")
+  @@index([expiresAt], name: "idx_verification_token_expires_at")
+  @@map("verification_tokens")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  userId    String   @db.Uuid
+  token     String   @unique @db.VarChar(500)
+  expiresAt DateTime @db.Timestamp(6)
+  revoked   Boolean  @default(false)
+  ipAddress String?  @db.VarChar(45)
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+  updatedAt DateTime @updatedAt @db.Timestamp(6)
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([token], name: "idx_refresh_token_token")
+  @@index([userId], name: "idx_refresh_token_user_id")
+  @@index([expiresAt], name: "idx_refresh_token_expires_at")
+  @@map("refresh_tokens")
+}
+
+model PasswordResetToken {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  userId    String   @db.Uuid
+  token     String   @unique @db.VarChar(500)
+  expiresAt DateTime @db.Timestamp(6)
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+  updatedAt DateTime @updatedAt @db.Timestamp(6)
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([token], name: "idx_password_reset_token_token")
+  @@index([userId], name: "idx_password_reset_token_user_id")
+  @@index([expiresAt], name: "idx_password_reset_token_expires_at")
+  @@map("password_reset_tokens")
+}
+
+// ============================================================================
+// MODELS - Company & Organization
+// ============================================================================
+
+model Company {
+  id        String        @id @default(uuid(7)) @db.Uuid
+  usernameId String?       @db.Uuid @unique
+  createdAt DateTime      @default(now()) @db.Timestamp(6)
+  updatedAt DateTime      @updatedAt @db.Timestamp(6)
+  deletedAt DateTime?     @db.Timestamp(6)
+
+  // Relations
+  members CompanyMember[]
+
+  @@index([usernameId], name: "idx_company_username_id")
+  @@index([deletedAt], name: "idx_company_deleted_at")
+  @@map("companies")
+}
+
+model CompanyMember {
+  id        String      @id @default(uuid(7)) @db.Uuid
+  companyId String      @db.Uuid
+  userId    String      @db.Uuid
+  role      CompanyRole @default(MEMBER)
+  status    UserStatus  @default(ACTIVE)
+  version   BigInt?
+  createdAt DateTime    @default(now()) @db.Timestamp(6)
+  updatedAt DateTime    @updatedAt @db.Timestamp(6)
+
+  // Relations
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@unique([companyId, userId], name: "uq_company_member_unique")
+  @@index([companyId], name: "idx_company_member_company_id")
+  @@index([userId], name: "idx_company_member_user_id")
+  @@map("company_members")
+}
+
+model Professional {
+  id         String   @id @default(uuid(7)) @db.Uuid
+  usernameId String?  @db.Uuid @unique
+  createdAt  DateTime @default(now()) @db.Timestamp(6)
+  updatedAt  DateTime @updatedAt @db.Timestamp(6)
+  deletedAt  DateTime? @db.Timestamp(6)
+
+  // Relations
+
+  @@index([usernameId], name: "idx_professional_username_id")
+  @@index([deletedAt], name: "idx_professional_deleted_at")
+  @@map("professionals")
+}
+
+model Username {
+  id       String   @id @default(uuid(7)) @db.Uuid
+  value    String   @unique @db.VarChar(255)
+  reserved Boolean  @default(false)
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+  updatedAt DateTime @updatedAt @db.Timestamp(6)
+
+  // Relations
+
+  @@index([value], name: "idx_username_value")
+  @@map("usernames")
+}
+
+// ============================================================================
+// MODELS - Geographic Data
+// ============================================================================
+
+model Country {
+  id           String   @id @default(uuid(7)) @db.Uuid
+  code         String   @unique @db.VarChar(2)
+  iso3         String?  @db.VarChar(3)
+  name         String   @db.VarChar(255)
+  nativeName   String?  @db.VarChar(255)
+  phoneCode    String?  @db.VarChar(10)
+  flagEmoji    String?  @db.VarChar(10)
+  flagSvgUrl   String?  @db.VarChar(1000)
+  currencyCode String?  @db.VarChar(3)
+  currencyName String?  @db.VarChar(255)
+  displayOrder Int      @default(0)
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now()) @db.Timestamp(6)
+  updatedAt    DateTime @updatedAt @db.Timestamp(6)
+
+  // Relations
+  states State[]
+  cities City[]
+
+  @@index([code], name: "idx_country_code")
+  @@index([name], name: "idx_country_name")
+  @@index([active], name: "idx_country_active")
+  @@map("countries")
+}
+
+model State {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  countryId String   @db.Uuid
+  ufCode    Int      @unique
+  uf        String   @db.VarChar(2)
+  name      String   @db.VarChar(255)
+  region    String?  @db.VarChar(50)
+  latitude  Float?
+  longitude Float?
+  flagUrl   String?  @db.VarChar(500)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+  updatedAt DateTime @updatedAt @db.Timestamp(6)
+
+  // Relations
+  country Country @relation(fields: [countryId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  cities  City[]
+
+  @@index([countryId], name: "idx_state_country_id")
+  @@index([uf], name: "idx_state_uf")
+  @@index([name], name: "idx_state_name")
+  @@index([active], name: "idx_state_active")
+  @@map("states")
+}
+
+model City {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  stateId   String   @db.Uuid
+  countryId String   @db.Uuid
+  codeIbge  Int      @unique
+  name      String   @db.VarChar(255)
+  latitude  Float?
+  longitude Float?
+  capital   Boolean  @default(false)
+  siafiId   Int?
+  ddd       Int?
+  timeZone  String?  @db.VarChar(50)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+  updatedAt DateTime @updatedAt @db.Timestamp(6)
+
+  // Relations
+  state   State   @relation(fields: [stateId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  country Country @relation(fields: [countryId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@unique([stateId, name], name: "uq_city_state_name")
+  @@index([stateId], name: "idx_city_state_id")
+  @@index([countryId], name: "idx_city_country_id")
+  @@index([name], name: "idx_city_name")
+  @@index([active], name: "idx_city_active")
+  @@map("cities")
+}
+
+// ============================================================================
+// MODELS - Support & Helpdesk
+// ============================================================================
+
+model TicketHelpdesk {
+  id          String         @id @default(uuid(7)) @db.Uuid
+  userId      String         @db.Uuid
+  title       String         @db.VarChar(500)
+  description String         @db.Text
+  status      TicketStatus   @default(OPEN)
+  priority    TicketPriority @default(MEDIUM)
+  category    String?        @db.VarChar(100)
+  attachments Json?
+  assignedTo  String?        @db.VarChar(255)
+  resolvedAt  DateTime?      @db.Timestamp(6)
+  createdAt   DateTime       @default(now()) @db.Timestamp(6)
+  updatedAt   DateTime       @updatedAt @db.Timestamp(6)
+  deletedAt   DateTime?      @db.Timestamp(6)
+
+  // Relations
+  user     User            @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  messages TicketMessage[]
+
+  @@index([userId], name: "idx_ticket_user_id")
+  @@index([status], name: "idx_ticket_status")
+  @@index([priority], name: "idx_ticket_priority")
+  @@index([createdAt], name: "idx_ticket_created_at")
+  @@index([deletedAt], name: "idx_ticket_deleted_at")
+  @@map("tickets_helpdesk")
+}
+
+model TicketMessage {
+  id          String     @id @default(uuid(7)) @db.Uuid
+  ticketId    String     @db.Uuid
+  userId      String?    @db.Uuid
+  senderType  SenderType
+  senderName  String?    @db.VarChar(255)
+  content     String     @db.Text
+  attachments Json?
+  createdAt   DateTime   @default(now()) @db.Timestamp(6)
+
+  // Relations
+  ticket TicketHelpdesk @relation(fields: [ticketId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  user   User?          @relation(fields: [userId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  @@index([ticketId], name: "idx_ticket_message_ticket_id")
+  @@index([userId], name: "idx_ticket_message_user_id")
+  @@index([createdAt], name: "idx_ticket_message_created_at")
+  @@map("ticket_messages")
+}
+
+model FAQ {
+  id         String   @id @default(uuid(7)) @db.Uuid
+  question   String   @db.VarChar(500)
+  answer     String   @db.Text
+  category   String?  @db.VarChar(100)
+  views      Int      @default(0)
+  helpful    Int      @default(0)
+  notHelpful Int      @default(0)
+  isActive   Boolean  @default(true)
+  order      Int      @default(0)
+  createdAt  DateTime @default(now()) @db.Timestamp(6)
+  updatedAt  DateTime @updatedAt @db.Timestamp(6)
+
+  // Relations
+
+  @@index([category], name: "idx_faq_category")
+  @@index([isActive], name: "idx_faq_active")
+  @@index([order], name: "idx_faq_order")
+  @@map("faqs")
+}
