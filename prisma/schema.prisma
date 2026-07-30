@@ -1,3 +1,7 @@
+// ============================================================================
+// Generator
+// ============================================================================
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -8,38 +12,14 @@ datasource db {
 }
 
 // ============================================================================
-// ENUMS - Authorization & Status
+// Identity
 // ============================================================================
-
-enum Role {
-  USER
-  ADMIN
-  PROFESSIONAL
-  COMPANY
-}
-
-enum CompanyRole {
-  OWNER
-  ADMIN
-  MANAGER
-  MEMBER
-}
 
 enum UserStatus {
+  PENDING_EMAIL
   ACTIVE
-  INACTIVE
+  BLOCKED
   SUSPENDED
-  REMOVED
-}
-
-// ============================================================================
-// ENUMS - Preferences & Configuration
-// ============================================================================
-
-enum Language {
-  PT_BR
-  EN_US
-  ES_ES
 }
 
 enum Theme {
@@ -48,25 +28,813 @@ enum Theme {
   SYSTEM
 }
 
+enum Language {
+  PT_BR
+  EN_US
+  ES_ES
+}
+
+enum TimeFormat {
+  H12
+  H24
+}
+
+enum TokenType {
+  EMAIL_VERIFICATION
+  PASSWORD_RESET
+  EMAIL_CHANGE
+}
+
 enum SocialProvider {
+  GOOGLE
   GITHUB
+  MICROSOFT
+  APPLE
   LINKEDIN
 }
 
 // ============================================================================
-// ENUMS - Features & Operations
+// Accounts
 // ============================================================================
 
-enum SenderType {
-  user
-  support
+enum AccountType {
+  SYSTEM
+  COMPANY
+  CUSTOMER
 }
 
-enum TicketPriority {
-  LOW
-  MEDIUM
-  HIGH
-  URGENT
+enum MembershipStatus {
+  ACTIVE
+  INVITED
+  SUSPENDED
+  REMOVED
+}
+
+enum ProfileType {
+  SYSTEM
+  CUSTOM
+}
+
+// ============================================================================
+// Authorization
+// ============================================================================
+
+enum PermissionEffect {
+  ALLOW
+  DENY
+}
+
+// ============================================================================
+// Subscription
+// ============================================================================
+
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  EXPIRED
+}
+
+enum BillingCycle {
+  MONTHLY
+  YEARLY
+}
+
+// ============================================================================
+// Notification
+// ============================================================================
+
+enum NotificationType {
+  INFO
+  SUCCESS
+  WARNING
+  ERROR
+}
+
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+}
+
+// ============================================================================
+// Company / Customer
+// ============================================================================
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+  NOT_INFORMED
+}
+
+// ============================================================================
+// Identity
+// ============================================================================
+
+model User {
+  id String @id @default(uuid(7)) @db.Uuid
+
+  firstName String @db.VarChar(100)
+
+  lastName String? @db.VarChar(100)
+
+  email String @unique @db.VarChar(255)
+
+  password String @db.Text
+
+  phone String? @db.VarChar(20)
+
+  avatar String? @db.VarChar(1000)
+
+  status UserStatus @default(PENDING_EMAIL)
+
+  emailVerifiedAt DateTime?
+
+  lastLoginAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  deletedAt DateTime?
+
+  // Relations
+
+  preference UserPreference?
+
+  memberships Membership[]
+
+  sessions Session[]
+
+  socialAccounts SocialAccount[]
+
+  verificationTokens VerificationToken[]
+
+  passwordResetTokens PasswordResetToken[]
+
+  tickets TicketHelpdesk[]
+
+  ticketMessages TicketMessage[]
+
+  @@index([email])
+  @@index([status])
+  @@map("users")
+}
+
+model UserPreference {
+  id String @id @default(uuid(7)) @db.Uuid
+
+  userId String @unique @db.Uuid
+
+  defaultMembershipId String? @db.Uuid
+
+  theme Theme @default(SYSTEM)
+
+  language Language @default(PT_BR)
+
+  timeFormat TimeFormat @default(H24)
+
+  timezone String @default("America/Sao_Paulo")
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  // Relations
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_preferences")
+}
+
+model Session {
+  id String @id @default(uuid(7)) @db.Uuid
+
+  userId String @db.Uuid
+
+  currentMembershipId String? @db.Uuid
+
+  refreshToken String @unique @db.Text
+
+  ipAddress String? @db.VarChar(45)
+
+  userAgent String? @db.VarChar(1000)
+
+  expiresAt DateTime
+
+  revokedAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  // Relations
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+model VerificationToken {
+  id String @id @default(uuid(7)) @db.Uuid
+
+  userId String @db.Uuid
+
+  type TokenType
+
+  code String @db.VarChar(6)
+
+  expiresAt DateTime
+
+  usedAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  // Relations
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("verification_tokens")
+}
+
+model PasswordResetToken {
+  id String @id @default(uuid(7)) @db.Uuid
+
+  userId String @db.Uuid
+
+  tokenHash String @unique @db.VarChar(255)
+
+  expiresAt DateTime
+
+  usedAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  // Relations
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("password_reset_tokens")
+}
+
+model SocialAccount {
+  id String @id @default(uuid(7)) @db.Uuid
+
+  userId String @db.Uuid
+
+  provider SocialProvider
+
+  providerUserId String @db.VarChar(255)
+
+  username String? @db.VarChar(255)
+
+  displayName String? @db.VarChar(255)
+
+  avatarUrl String? @db.VarChar(1000)
+
+  accessToken String? @db.Text
+
+  refreshToken String? @db.Text
+
+  expiresAt DateTime?
+
+  connectedAt DateTime @default(now())
+
+  lastSyncAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  // Relations
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerUserId])
+  @@index([userId])
+  @@map("social_accounts")
+}
+
+// ============================================================================
+// Authorization
+// ============================================================================
+
+model Account {
+  id String @id @default(uuid(7)) @db.Uuid
+
+  type AccountType
+
+  name String @db.VarChar(255)
+
+  slug String @unique @db.VarChar(255)
+
+  avatar String? @db.VarChar(1000)
+
+  active Boolean @default(true)
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  deletedAt DateTime?
+
+  // Relations
+
+  memberships Membership[]
+
+  profiles Profile[]
+
+  company Company?
+
+  customer Customer?
+
+  subscription Subscription?
+
+  branding Branding?
+
+  settings AccountSetting?
+
+  auditLogs AuditLog[]
+
+  @@index([type])
+  @@index([active])
+  @@map("accounts")
+}
+
+model Membership {
+  id String @id @default(uuid(7)) @db.Uuid
+
+  accountId String @db.Uuid
+
+  userId String @db.Uuid
+
+  profileId String @db.Uuid
+
+  status MembershipStatus @default(ACTIVE)
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  // Relations
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  profile Profile @relation(fields: [profileId], references: [id], onDelete: Restrict)
+
+  notifications Notification[]
+
+  auditLogs AuditLog[]
+
+  @@unique([accountId, userId])
+  @@index([accountId])
+  @@index([userId])
+  @@map("memberships")
+}
+
+model Profile {
+  id String @id @default(uuid(7)) @db.Uuid
+
+  accountId String @db.Uuid
+
+  type ProfileType @default(CUSTOM)
+
+  name String @db.VarChar(100)
+
+  description String? @db.VarChar(500)
+
+  isDefault Boolean @default(false)
+
+  isProtected Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  // Relations
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  memberships Membership[]
+
+  permissions ProfilePermission[]
+
+  overrides PermissionOverride[]
+
+  @@unique([accountId, name])
+  @@map("profiles")
+}
+
+model Permission {
+  id String @id @default(uuid(7)) @db.Uuid
+
+  code String @unique @db.VarChar(150)
+
+  name String @db.VarChar(150)
+
+  module String? @db.VarChar(100)
+
+  description String? @db.VarChar(500)
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  // Relations
+
+  profiles ProfilePermission[]
+
+  overrides PermissionOverride[]
+
+  @@index([module])
+  @@map("permissions")
+}
+
+model ProfilePermission {
+  id String @id @default(uuid(7)) @db.Uuid
+
+  profileId String @db.Uuid
+
+  permissionId String @db.Uuid
+
+  createdAt DateTime @default(now())
+
+  // Relations
+
+  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([profileId, permissionId])
+  @@map("profile_permissions")
+}
+
+model PermissionOverride {
+  id String @id @default(uuid(7)) @db.Uuid
+
+  profileId String @db.Uuid
+
+  permissionId String @db.Uuid
+
+  effect PermissionEffect
+
+  createdAt DateTime @default(now())
+
+  // Relations
+
+  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([profileId, permissionId])
+  @@map("permission_overrides")
+}
+
+// ============================================================================
+// Business
+// ============================================================================
+
+model Company {
+  id String @id @default(uuid(7)) @db.Uuid
+
+  accountId String @unique @db.Uuid
+
+  logo String? @db.VarChar(1000)
+
+  corporateName String @db.VarChar(255)
+
+  tradeName String @db.VarChar(255)
+
+  document String @unique @db.VarChar(20)
+
+  email String @db.VarChar(255)
+
+  phone String? @db.VarChar(20)
+
+  whatsapp String? @db.VarChar(20)
+
+  website String? @db.VarChar(500)
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  deletedAt DateTime?
+
+  // Relations
+
+  account Account @relation(fields: [accountId], references: [id])
+
+  addresses Address[]
+
+  @@index([tradeName])
+  @@map("companies")
+}
+
+model Customer {
+  id String @id @default(uuid(7)) @db.Uuid
+
+  accountId String @unique @db.Uuid
+
+  photo String? @db.VarChar(1000)
+
+  document String? @db.VarChar(20)
+
+  birthDate DateTime?
+
+  gender Gender?
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  deletedAt DateTime?
+
+  // Relations
+
+  account Account @relation(fields: [accountId], references: [id])
+
+  addresses Address[]
+
+  @@index([document])
+  @@map("customers")
+}
+
+model Address {
+  id String @id @default(uuid(7)) @db.Uuid
+
+  companyId String? @db.Uuid
+
+  customerId String? @db.Uuid
+
+  zipCode String @db.VarChar(10)
+
+  street String @db.VarChar(255)
+
+  number String @db.VarChar(20)
+
+  complement String? @db.VarChar(255)
+
+  district String @db.VarChar(255)
+
+  city String @db.VarChar(255)
+
+  state String @db.VarChar(100)
+
+  country String @default("Brasil") @db.VarChar(100)
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  // Relations
+
+  company Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  customer Customer? @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([customerId])
+  @@map("addresses")
+}
+
+model Subscription {
+  id String @id @default(uuid(7)) @db.Uuid
+
+  accountId String @unique @db.Uuid
+
+  plan String @db.VarChar(100)
+
+  status SubscriptionStatus
+
+  billingCycle BillingCycle
+
+  trialEndsAt DateTime?
+
+  startsAt DateTime
+
+  expiresAt DateTime?
+
+  canceledAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  // Relations
+
+  account Account @relation(fields: [accountId], references: [id])
+
+  @@index([status])
+  @@map("subscriptions")
+}
+
+model Branding {
+  id String @id @default(uuid(7)) @db.Uuid
+
+  accountId String @unique @db.Uuid
+
+  logo String? @db.VarChar(1000)
+
+  favicon String? @db.VarChar(1000)
+
+  primaryColor String? @db.VarChar(20)
+
+  secondaryColor String? @db.VarChar(20)
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  // Relations
+
+  account Account @relation(fields: [accountId], references: [id])
+
+  @@map("brandings")
+}
+
+model AccountSetting {
+  id String @id @default(uuid(7)) @db.Uuid
+
+  accountId String @unique @db.Uuid
+
+  language Language @default(PT_BR)
+
+  timezone String @default("America/Sao_Paulo")
+
+  dateFormat String @default("dd/MM/yyyy")
+
+  currency String @default("BRL")
+
+  notificationsEnabled Boolean @default(true)
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  // Relations
+
+  account Account @relation(fields: [accountId], references: [id])
+
+  @@map("account_settings")
+}
+
+// ============================================================================
+// Infrastructure
+// ============================================================================
+
+model Notification {
+  id String @id @default(uuid(7)) @db.Uuid
+
+  membershipId String @db.Uuid
+
+  type NotificationType
+
+  channel NotificationChannel @default(IN_APP)
+
+  title String @db.VarChar(255)
+
+  message String @db.Text
+
+  url String? @db.VarChar(500)
+
+  icon String? @db.VarChar(100)
+
+  readAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  // Relations
+
+  membership Membership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+
+  @@index([membershipId])
+  @@index([readAt])
+  @@map("notifications")
+}
+
+model AuditLog {
+  id String @id @default(uuid(7)) @db.Uuid
+
+  accountId String? @db.Uuid
+
+  membershipId String? @db.Uuid
+
+  entity String @db.VarChar(100)
+
+  entityId String @db.VarChar(100)
+
+  action String @db.VarChar(50)
+
+  description String? @db.Text
+
+  ipAddress String? @db.VarChar(45)
+
+  userAgent String? @db.VarChar(1000)
+
+  metadata Json?
+
+  createdAt DateTime @default(now())
+
+  // Relations
+
+  account Account? @relation(fields: [accountId], references: [id], onDelete: SetNull)
+
+  membership Membership? @relation(fields: [membershipId], references: [id], onDelete: SetNull)
+
+  @@index([accountId])
+  @@index([membershipId])
+  @@index([entity])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// ============================================================================
+// Geographic
+// ============================================================================
+
+model Country {
+  id String @id @default(uuid(7)) @db.Uuid
+
+  code String @unique @db.VarChar(2)
+
+  name String @db.VarChar(100)
+
+  phoneCode String? @db.VarChar(10)
+
+  currency String? @db.VarChar(10)
+
+  active Boolean @default(true)
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  // Relations
+
+  states State[]
+
+  @@index([code])
+  @@map("countries")
+}
+
+model State {
+  id String @id @default(uuid(7)) @db.Uuid
+
+  countryId String @db.Uuid
+
+  code String @db.VarChar(5)
+
+  name String @db.VarChar(100)
+
+  active Boolean @default(true)
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  // Relations
+
+  country Country @relation(fields: [countryId], references: [id], onDelete: Cascade)
+
+  cities City[]
+
+  @@unique([countryId, code])
+  @@index([countryId])
+  @@map("states")
+}
+
+model City {
+  id String @id @default(uuid(7)) @db.Uuid
+
+  stateId String @db.Uuid
+
+  name String @db.VarChar(150)
+
+  ibgeCode String? @unique @db.VarChar(20)
+
+  active Boolean @default(true)
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  // Relations
+
+  state State @relation(fields: [stateId], references: [id], onDelete: Cascade)
+
+  @@unique([stateId, name])
+  @@index([stateId])
+  @@map("cities")
 }
 
 enum TicketStatus {
@@ -76,307 +844,18 @@ enum TicketStatus {
   CLOSED
 }
 
-enum TokenType {
-  EMAIL_VERIFICATION
-  PASSWORD_RESET
-  EMAIL_CHANGE
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
 }
 
-enum UserTrackStatus {
-  STARTED
-  COMPLETED
+enum SenderType {
+  USER
+  AGENT
+  SYSTEM
 }
-
-// ============================================================================
-// MODELS - User & Authentication
-// ============================================================================
-
-model User {
-  id              String     @id @default(uuid(7)) @db.Uuid
-  email           String     @unique @db.VarChar(255)
-  password        String     @db.Text
-  firstName       String     @db.VarChar(255)
-  lastName        String?    @db.VarChar(255)
-  avatar          String?    @db.VarChar(1000)
-  role            Role       @default(USER)
-  status          UserStatus @default(ACTIVE)
-  emailVerified   Boolean    @default(false)
-  emailVerifiedAt DateTime?  @db.Timestamp(6)
-  lastLoginAt     DateTime?  @db.Timestamp(6)
-  createdAt       DateTime   @default(now()) @db.Timestamp(6)
-  updatedAt       DateTime   @updatedAt @db.Timestamp(6)
-  deletedAt       DateTime?  @db.Timestamp(6)
-
-  // Relations
-  settings                Settings?
-  companyMembers          CompanyMember[]
-  socialAccounts          SocialAccount[]
-  verificationTokens      VerificationToken[]
-  refreshTokens           RefreshToken[]
-  passwordResetTokens     PasswordResetToken[]
-  tickets                 TicketHelpdesk[]
-  ticketMessages          TicketMessage[]
-
-  @@index([email], name: "idx_user_email")
-  @@index([status], name: "idx_user_status")
-  @@index([deletedAt], name: "idx_user_deleted_at")
-  @@map("users")
-}
-
-model Settings {
-  id                   String   @id @default(uuid(7)) @db.Uuid
-  userId               String   @unique @db.Uuid
-  theme                Theme    @default(SYSTEM)
-  language             Language @default(PT_BR)
-  notificationsEnabled Boolean  @default(true)
-  emailNotifications   Boolean  @default(true)
-  pushNotifications    Boolean  @default(true)
-  emailFrequency       String   @default("DAILY") @db.VarChar(20)
-  dailyGoalMinutes     Int      @default(60)
-  preferences          Json?
-  updatedAt            DateTime @updatedAt @db.Timestamp(6)
-
-  // Relations
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-
-  @@index([userId], name: "idx_settings_user_id")
-  @@map("settings")
-}
-
-model SocialAccount {
-  id             String         @id @default(uuid(7)) @db.Uuid
-  userId         String         @db.Uuid
-  provider       SocialProvider
-  providerUserId String         @db.VarChar(255)
-  username       String?        @db.VarChar(255)
-  displayName    String?        @db.VarChar(255)
-  avatarUrl      String?        @db.VarChar(1000)
-  profileUrl     String?        @db.VarChar(1000)
-  accessToken    String         @db.Text
-  refreshToken   String?        @db.Text
-  expiresAt      DateTime?      @db.Timestamp(6)
-  connectedAt    DateTime       @default(now()) @db.Timestamp(6)
-  lastSync       DateTime?      @db.Timestamp(6)
-  createdAt      DateTime       @default(now()) @db.Timestamp(6)
-  updatedAt      DateTime       @updatedAt @db.Timestamp(6)
-
-  // Relations
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-
-  @@unique([provider, providerUserId], name: "uq_social_provider_user_id")
-  @@index([userId], name: "idx_social_account_user_id")
-  @@index([provider], name: "idx_social_account_provider")
-  @@map("social_accounts")
-}
-
-model VerificationToken {
-  id        String    @id @default(uuid(7)) @db.Uuid
-  userId    String    @db.Uuid
-  code      String    @db.VarChar(6)
-  tokenType TokenType @default(EMAIL_VERIFICATION)
-  expiresAt DateTime  @db.Timestamp(6)
-  used      Boolean   @default(false)
-  createdAt DateTime  @default(now()) @db.Timestamp(6)
-  updatedAt DateTime  @updatedAt @db.Timestamp(6)
-
-  // Relations
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-
-  @@index([code], name: "idx_verification_token_code")
-  @@index([userId], name: "idx_verification_token_user_id")
-  @@index([expiresAt], name: "idx_verification_token_expires_at")
-  @@map("verification_tokens")
-}
-
-model RefreshToken {
-  id        String   @id @default(uuid(7)) @db.Uuid
-  userId    String   @db.Uuid
-  token     String   @unique @db.VarChar(500)
-  expiresAt DateTime @db.Timestamp(6)
-  revoked   Boolean  @default(false)
-  ipAddress String?  @db.VarChar(45)
-  createdAt DateTime @default(now()) @db.Timestamp(6)
-  updatedAt DateTime @updatedAt @db.Timestamp(6)
-
-  // Relations
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-
-  @@index([token], name: "idx_refresh_token_token")
-  @@index([userId], name: "idx_refresh_token_user_id")
-  @@index([expiresAt], name: "idx_refresh_token_expires_at")
-  @@map("refresh_tokens")
-}
-
-model PasswordResetToken {
-  id        String   @id @default(uuid(7)) @db.Uuid
-  userId    String   @db.Uuid
-  token     String   @unique @db.VarChar(500)
-  expiresAt DateTime @db.Timestamp(6)
-  used      Boolean  @default(false)
-  createdAt DateTime @default(now()) @db.Timestamp(6)
-  updatedAt DateTime @updatedAt @db.Timestamp(6)
-
-  // Relations
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-
-  @@index([token], name: "idx_password_reset_token_token")
-  @@index([userId], name: "idx_password_reset_token_user_id")
-  @@index([expiresAt], name: "idx_password_reset_token_expires_at")
-  @@map("password_reset_tokens")
-}
-
-// ============================================================================
-// MODELS - Company & Organization
-// ============================================================================
-
-model Company {
-  id        String        @id @default(uuid(7)) @db.Uuid
-  usernameId String?       @db.Uuid @unique
-  createdAt DateTime      @default(now()) @db.Timestamp(6)
-  updatedAt DateTime      @updatedAt @db.Timestamp(6)
-  deletedAt DateTime?     @db.Timestamp(6)
-
-  // Relations
-  members CompanyMember[]
-
-  @@index([usernameId], name: "idx_company_username_id")
-  @@index([deletedAt], name: "idx_company_deleted_at")
-  @@map("companies")
-}
-
-model CompanyMember {
-  id        String      @id @default(uuid(7)) @db.Uuid
-  companyId String      @db.Uuid
-  userId    String      @db.Uuid
-  role      CompanyRole @default(MEMBER)
-  status    UserStatus  @default(ACTIVE)
-  version   BigInt?
-  createdAt DateTime    @default(now()) @db.Timestamp(6)
-  updatedAt DateTime    @updatedAt @db.Timestamp(6)
-
-  // Relations
-  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-
-  @@unique([companyId, userId], name: "uq_company_member_unique")
-  @@index([companyId], name: "idx_company_member_company_id")
-  @@index([userId], name: "idx_company_member_user_id")
-  @@map("company_members")
-}
-
-model Professional {
-  id         String   @id @default(uuid(7)) @db.Uuid
-  usernameId String?  @db.Uuid @unique
-  createdAt  DateTime @default(now()) @db.Timestamp(6)
-  updatedAt  DateTime @updatedAt @db.Timestamp(6)
-  deletedAt  DateTime? @db.Timestamp(6)
-
-  // Relations
-
-  @@index([usernameId], name: "idx_professional_username_id")
-  @@index([deletedAt], name: "idx_professional_deleted_at")
-  @@map("professionals")
-}
-
-model Username {
-  id       String   @id @default(uuid(7)) @db.Uuid
-  value    String   @unique @db.VarChar(255)
-  reserved Boolean  @default(false)
-  createdAt DateTime @default(now()) @db.Timestamp(6)
-  updatedAt DateTime @updatedAt @db.Timestamp(6)
-
-  // Relations
-
-  @@index([value], name: "idx_username_value")
-  @@map("usernames")
-}
-
-// ============================================================================
-// MODELS - Geographic Data
-// ============================================================================
-
-model Country {
-  id           String   @id @default(uuid(7)) @db.Uuid
-  code         String   @unique @db.VarChar(2)
-  iso3         String?  @db.VarChar(3)
-  name         String   @db.VarChar(255)
-  nativeName   String?  @db.VarChar(255)
-  phoneCode    String?  @db.VarChar(10)
-  flagEmoji    String?  @db.VarChar(10)
-  flagSvgUrl   String?  @db.VarChar(1000)
-  currencyCode String?  @db.VarChar(3)
-  currencyName String?  @db.VarChar(255)
-  displayOrder Int      @default(0)
-  active       Boolean  @default(true)
-  createdAt    DateTime @default(now()) @db.Timestamp(6)
-  updatedAt    DateTime @updatedAt @db.Timestamp(6)
-
-  // Relations
-  states State[]
-  cities City[]
-
-  @@index([code], name: "idx_country_code")
-  @@index([name], name: "idx_country_name")
-  @@index([active], name: "idx_country_active")
-  @@map("countries")
-}
-
-model State {
-  id        String   @id @default(uuid(7)) @db.Uuid
-  countryId String   @db.Uuid
-  ufCode    Int      @unique
-  uf        String   @db.VarChar(2)
-  name      String   @db.VarChar(255)
-  region    String?  @db.VarChar(50)
-  latitude  Float?
-  longitude Float?
-  flagUrl   String?  @db.VarChar(500)
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now()) @db.Timestamp(6)
-  updatedAt DateTime @updatedAt @db.Timestamp(6)
-
-  // Relations
-  country Country @relation(fields: [countryId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  cities  City[]
-
-  @@index([countryId], name: "idx_state_country_id")
-  @@index([uf], name: "idx_state_uf")
-  @@index([name], name: "idx_state_name")
-  @@index([active], name: "idx_state_active")
-  @@map("states")
-}
-
-model City {
-  id        String   @id @default(uuid(7)) @db.Uuid
-  stateId   String   @db.Uuid
-  countryId String   @db.Uuid
-  codeIbge  Int      @unique
-  name      String   @db.VarChar(255)
-  latitude  Float?
-  longitude Float?
-  capital   Boolean  @default(false)
-  siafiId   Int?
-  ddd       Int?
-  timeZone  String?  @db.VarChar(50)
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now()) @db.Timestamp(6)
-  updatedAt DateTime @updatedAt @db.Timestamp(6)
-
-  // Relations
-  state   State   @relation(fields: [stateId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  country Country @relation(fields: [countryId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-
-  @@unique([stateId, name], name: "uq_city_state_name")
-  @@index([stateId], name: "idx_city_state_id")
-  @@index([countryId], name: "idx_city_country_id")
-  @@index([name], name: "idx_city_name")
-  @@index([active], name: "idx_city_active")
-  @@map("cities")
-}
-
-// ============================================================================
-// MODELS - Support & Helpdesk
-// ============================================================================
 
 model TicketHelpdesk {
   id          String         @id @default(uuid(7)) @db.Uuid
@@ -439,7 +918,6 @@ model FAQ {
   updatedAt  DateTime @updatedAt @db.Timestamp(6)
 
   // Relations
-
   @@index([category], name: "idx_faq_category")
   @@index([isActive], name: "idx_faq_active")
   @@index([order], name: "idx_faq_order")

@@ -3,9 +3,8 @@ import { ConfigModule } from '@nestjs/config';
 import { PrismaService } from './database/prisma.service';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
-import { HelpdeskModule } from './helpdesk/helpdesk.module';
 import { FaqModule } from './faq/faq.module';
-import { SettingsModule } from './settings/settings.module';
+import { SecurityModule } from './core/security/security.module';
 
 @Module({
   imports: [
@@ -14,9 +13,8 @@ import { SettingsModule } from './settings/settings.module';
     }),
     UsersModule,
     AuthModule,
-    HelpdeskModule,
     FaqModule,
-    SettingsModule,
+    SecurityModule,
   ],
   controllers: [],
   providers: [PrismaService],

@@ -1,19 +1,21 @@
-import { IsOptional, IsString } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { IsString, IsOptional, MaxLength, Matches } from 'class-validator';
+import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class UpdateProfileDto {
-  @ApiProperty({ required: false })
-  @IsString()
+  @ApiPropertyOptional({ example: 'João' })
   @IsOptional()
+  @IsString()
+  @MaxLength(50)
   firstName?: string;
 
-  @ApiProperty({ required: false })
-  @IsString()
+  @ApiPropertyOptional({ example: 'Silva' })
   @IsOptional()
+  @IsString()
+  @MaxLength(50)
   lastName?: string;
 
-  @ApiProperty({ required: false })
-  @IsString()
+  @ApiPropertyOptional({ example: '+5511999999999' })
   @IsOptional()
-  avatar?: string;
+  @Matches(/^\+[1-9]\d{1,14}$/, { message: 'Telefone deve seguir o padrão E.164' })
+  phone?: string;
 }

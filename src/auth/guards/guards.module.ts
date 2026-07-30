@@ -4,10 +4,6 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 
 import { PrismaService } from '../../database/prisma.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
-import { AdminGuard } from './admin.guard';
-import { CompanyGuard } from './company.guard';
-import { ProfessionalGuard } from './professional.guard';
-import { GenericAuthGuard } from './generic-auth.guard';
 
 @Module({
   imports: [
@@ -28,16 +24,10 @@ import { GenericAuthGuard } from './generic-auth.guard';
   providers: [
     PrismaService,
     JwtAuthGuard,
-    AdminGuard,
-    CompanyGuard,
-    ProfessionalGuard,
   ],
   exports: [
     JwtModule,
     JwtAuthGuard,
-    AdminGuard,
-    CompanyGuard,
-    ProfessionalGuard,
   ],
 })
 export class GuardsModule {}

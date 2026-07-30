@@ -2,11 +2,10 @@ import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@n
 import { FaqService } from './faq.service';
 import { CreateFaqDto } from './dtos/create-faq.dto';
 import { UpdateFaqDto } from './dtos/update-faq.dto';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { ProfessionalGuard } from '../auth/guards/professional.guard';
+import { JwtAuthGuard } from '../core/security/guards/jwt-auth.guard';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
-import { Public } from '../common/decorators/public.decorator';
-import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { Public } from '../core/security/decorators/metadata.decorators';
+import { CurrentUser } from '../core/security/decorators/context.decorators';
 
 @ApiTags('Perguntas Frequentes')
 @Controller('faq')
@@ -14,9 +13,9 @@ export class FaqController {
   constructor(private readonly faqService: FaqService) {}
 
   @ApiBearerAuth()
-  @UseGuards(ProfessionalGuard)
+  @UseGuards(JwtAuthGuard)
   @Post('v1')
-  @ApiOperation({ summary: 'Criar nova FAQ (requer função PROFESSIONAL)' })
+  @ApiOperation({ summary: 'Criar nova FAQ' })
   create(@CurrentUser() user: any, @Body() createFaqDto: CreateFaqDto) {
     return this.faqService.create(createFaqDto);
   }
@@ -36,17 +35,17 @@ export class FaqController {
   }
 
   @ApiBearerAuth()
-  @UseGuards(ProfessionalGuard)
+  @UseGuards(JwtAuthGuard)
   @Patch('v1/:id')
-  @ApiOperation({ summary: 'Atualizar uma FAQ (requer função PROFESSIONAL)' })
+  @ApiOperation({ summary: 'Atualizar uma FAQ' })
   update(@CurrentUser() user: any, @Param('id') id: string, @Body() updateFaqDto: UpdateFaqDto) {
     return this.faqService.update(id, updateFaqDto);
   }
 
   @ApiBearerAuth()
-  @UseGuards(ProfessionalGuard)
+  @UseGuards(JwtAuthGuard)
   @Delete('v1/:id')
-  @ApiOperation({ summary: 'Deletar uma FAQ (requer função PROFESSIONAL)' })
+  @ApiOperation({ summary: 'Deletar uma FAQ' })
   remove(@CurrentUser() user: any, @Param('id') id: string) {
     return this.faqService.remove(id);
   }

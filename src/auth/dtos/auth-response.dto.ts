@@ -8,16 +8,49 @@ export class UserResponseDto {
   email: string;
 
   @ApiProperty()
-  name: string;
+  firstName: string;
 
   @ApiProperty({ required: false })
-  photoUrl?: string;
+  lastName?: string;
+
+  @ApiProperty({ required: false })
+  avatar?: string;
 
   @ApiProperty()
   emailVerified: boolean;
 
   @ApiProperty()
   status: string;
+}
+
+export class AccountResponseDto {
+  @ApiProperty()
+  id: string;
+
+  @ApiProperty()
+  name: string;
+
+  @ApiProperty()
+  type: string;
+
+  @ApiProperty({ required: false })
+  avatar?: string;
+}
+
+export class MembershipResponseDto {
+  @ApiProperty()
+  id: string;
+
+  @ApiProperty()
+  status: string;
+}
+
+export class ProfileResponseDto {
+  @ApiProperty()
+  id: string;
+
+  @ApiProperty()
+  name: string;
 }
 
 export class AuthResponseDto {
@@ -31,13 +64,25 @@ export class AuthResponseDto {
   expiresIn: number;
 
   @ApiProperty()
-  refreshExpiresIn: number;
-
-  @ApiProperty()
-  tokenType: string;
-
-  @ApiProperty()
   user: UserResponseDto;
+
+  @ApiProperty({ required: false })
+  currentAccount?: AccountResponseDto;
+
+  @ApiProperty({ required: false })
+  currentMembership?: MembershipResponseDto;
+
+  @ApiProperty({ required: false })
+  profile?: ProfileResponseDto;
+
+  @ApiProperty({ type: [String], required: false })
+  permissions?: string[];
+
+  @ApiProperty({ type: [String], required: false })
+  menus?: string[];
+
+  @ApiProperty({ type: [String], required: false })
+  components?: string[];
 }
 
 export class RefreshTokenResponseDto {
@@ -49,10 +94,4 @@ export class RefreshTokenResponseDto {
 
   @ApiProperty()
   expiresIn: number;
-
-  @ApiProperty()
-  refreshExpiresIn: number;
-
-  @ApiProperty()
-  tokenType: string;
 }
