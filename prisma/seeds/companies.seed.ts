@@ -21,7 +21,6 @@ export async function seedCompanies(
         accountId: account.id,
       },
       update: {
-        logo: company.logo,
         corporateName: company.corporateName,
         tradeName: company.tradeName,
         document: company.document,
@@ -32,7 +31,6 @@ export async function seedCompanies(
       },
       create: {
         accountId: account.id,
-        logo: company.logo,
         corporateName: company.corporateName,
         tradeName: company.tradeName,
         document: company.document,

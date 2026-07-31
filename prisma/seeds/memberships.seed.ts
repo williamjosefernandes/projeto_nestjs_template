@@ -63,20 +63,7 @@ export async function seedMemberships(
       },
     });
 
-    if (membership.isDefault) {
-      await prisma.userPreference.upsert({
-        where: {
-          userId: user.id,
-        },
-        update: {
-          defaultMembershipId: createdMembership.id,
-        },
-        create: {
-          userId: user.id,
-          defaultMembershipId: createdMembership.id,
-        },
-      });
-    }
+    // userPreference removido no novo schema, defaultMembershipId não é mais usado
   }
 
   console.log(`✅ ${memberships.length} memberships seeded.`);

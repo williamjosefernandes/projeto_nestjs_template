@@ -38,7 +38,6 @@ export class UsersService {
   async getMe(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      include: { preference: true },
     });
     if (!user) throw new NotFoundException('User not found');
     return user;
@@ -52,7 +51,6 @@ export class UsersService {
         lastName: dto.lastName,
         phone: dto.phone,
       },
-      include: { preference: true },
     });
   }
 
@@ -96,27 +94,29 @@ export class UsersService {
   }
 
   async getPreferences(userId: string) {
-    let pref = await this.prisma.userPreference.findUnique({ where: { userId } });
-    if (!pref) {
-      pref = await this.prisma.userPreference.create({ data: { userId } });
-    }
-    return pref;
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        theme: true,
+        language: true,
+        timezone: true,
+        timeFormat: true,
+      },
+    });
+    if (!user) throw new NotFoundException('User not found');
+    return user;
   }
 
   async updatePreferences(userId: string, dto: UpdatePreferencesDto) {
-    if (dto.defaultMembershipId) {
-      const membership = await this.prisma.membership.findFirst({
-        where: { id: dto.defaultMembershipId, userId },
-      });
-      if (!membership) {
-        throw new BadRequestException('Membership not found or does not belong to user');
-      }
-    }
-
-    return this.prisma.userPreference.upsert({
-      where: { userId },
-      create: { userId, ...dto },
-      update: { ...dto },
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { ...dto },
+      select: {
+        theme: true,
+        language: true,
+        timezone: true,
+        timeFormat: true,
+      },
     });
   }
 

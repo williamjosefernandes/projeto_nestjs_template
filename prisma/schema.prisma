@@ -6,13 +6,17 @@ generator client {
   provider = "prisma-client-js"
 }
 
+// ============================================================================
+// Datasource
+// ============================================================================
+
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
 // ============================================================================
-// Identity
+// Enums globais e de Domínio
 // ============================================================================
 
 enum UserStatus {
@@ -53,10 +57,6 @@ enum SocialProvider {
   LINKEDIN
 }
 
-// ============================================================================
-// Accounts
-// ============================================================================
-
 enum AccountType {
   SYSTEM
   COMPANY
@@ -75,18 +75,16 @@ enum ProfileType {
   CUSTOM
 }
 
-// ============================================================================
-// Authorization
-// ============================================================================
-
 enum PermissionEffect {
   ALLOW
   DENY
 }
 
-// ============================================================================
-// Subscription
-// ============================================================================
+enum TypePermission {
+  MENU
+  COMPONENT
+  API
+}
 
 enum SubscriptionStatus {
   TRIAL
@@ -101,10 +99,6 @@ enum BillingCycle {
   YEARLY
 }
 
-// ============================================================================
-// Notification
-// ============================================================================
-
 enum NotificationType {
   INFO
   SUCCESS
@@ -117,751 +111,11 @@ enum NotificationChannel {
   EMAIL
 }
 
-// ============================================================================
-// Company / Customer
-// ============================================================================
-
 enum Gender {
   MALE
   FEMALE
   OTHER
   NOT_INFORMED
-}
-
-// ============================================================================
-// Identity
-// ============================================================================
-
-model User {
-  id String @id @default(uuid(7)) @db.Uuid
-
-  firstName String @db.VarChar(100)
-
-  lastName String? @db.VarChar(100)
-
-  email String @unique @db.VarChar(255)
-
-  password String @db.Text
-
-  phone String? @db.VarChar(20)
-
-  avatar String? @db.VarChar(1000)
-
-  status UserStatus @default(PENDING_EMAIL)
-
-  emailVerifiedAt DateTime?
-
-  lastLoginAt DateTime?
-
-  createdAt DateTime @default(now())
-
-  updatedAt DateTime @updatedAt
-
-  deletedAt DateTime?
-
-  // Relations
-
-  preference UserPreference?
-
-  memberships Membership[]
-
-  sessions Session[]
-
-  socialAccounts SocialAccount[]
-
-  verificationTokens VerificationToken[]
-
-  passwordResetTokens PasswordResetToken[]
-
-  tickets TicketHelpdesk[]
-
-  ticketMessages TicketMessage[]
-
-  @@index([email])
-  @@index([status])
-  @@map("users")
-}
-
-model UserPreference {
-  id String @id @default(uuid(7)) @db.Uuid
-
-  userId String @unique @db.Uuid
-
-  defaultMembershipId String? @db.Uuid
-
-  theme Theme @default(SYSTEM)
-
-  language Language @default(PT_BR)
-
-  timeFormat TimeFormat @default(H24)
-
-  timezone String @default("America/Sao_Paulo")
-
-  createdAt DateTime @default(now())
-
-  updatedAt DateTime @updatedAt
-
-  // Relations
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("user_preferences")
-}
-
-model Session {
-  id String @id @default(uuid(7)) @db.Uuid
-
-  userId String @db.Uuid
-
-  currentMembershipId String? @db.Uuid
-
-  refreshToken String @unique @db.Text
-
-  ipAddress String? @db.VarChar(45)
-
-  userAgent String? @db.VarChar(1000)
-
-  expiresAt DateTime
-
-  revokedAt DateTime?
-
-  createdAt DateTime @default(now())
-
-  updatedAt DateTime @updatedAt
-
-  // Relations
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([expiresAt])
-  @@map("sessions")
-}
-
-model VerificationToken {
-  id String @id @default(uuid(7)) @db.Uuid
-
-  userId String @db.Uuid
-
-  type TokenType
-
-  code String @db.VarChar(6)
-
-  expiresAt DateTime
-
-  usedAt DateTime?
-
-  createdAt DateTime @default(now())
-
-  // Relations
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([expiresAt])
-  @@map("verification_tokens")
-}
-
-model PasswordResetToken {
-  id String @id @default(uuid(7)) @db.Uuid
-
-  userId String @db.Uuid
-
-  tokenHash String @unique @db.VarChar(255)
-
-  expiresAt DateTime
-
-  usedAt DateTime?
-
-  createdAt DateTime @default(now())
-
-  // Relations
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([expiresAt])
-  @@map("password_reset_tokens")
-}
-
-model SocialAccount {
-  id String @id @default(uuid(7)) @db.Uuid
-
-  userId String @db.Uuid
-
-  provider SocialProvider
-
-  providerUserId String @db.VarChar(255)
-
-  username String? @db.VarChar(255)
-
-  displayName String? @db.VarChar(255)
-
-  avatarUrl String? @db.VarChar(1000)
-
-  accessToken String? @db.Text
-
-  refreshToken String? @db.Text
-
-  expiresAt DateTime?
-
-  connectedAt DateTime @default(now())
-
-  lastSyncAt DateTime?
-
-  createdAt DateTime @default(now())
-
-  updatedAt DateTime @updatedAt
-
-  // Relations
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([provider, providerUserId])
-  @@index([userId])
-  @@map("social_accounts")
-}
-
-// ============================================================================
-// Authorization
-// ============================================================================
-
-model Account {
-  id String @id @default(uuid(7)) @db.Uuid
-
-  type AccountType
-
-  name String @db.VarChar(255)
-
-  slug String @unique @db.VarChar(255)
-
-  avatar String? @db.VarChar(1000)
-
-  active Boolean @default(true)
-
-  createdAt DateTime @default(now())
-
-  updatedAt DateTime @updatedAt
-
-  deletedAt DateTime?
-
-  // Relations
-
-  memberships Membership[]
-
-  profiles Profile[]
-
-  company Company?
-
-  customer Customer?
-
-  subscription Subscription?
-
-  branding Branding?
-
-  settings AccountSetting?
-
-  auditLogs AuditLog[]
-
-  @@index([type])
-  @@index([active])
-  @@map("accounts")
-}
-
-model Membership {
-  id String @id @default(uuid(7)) @db.Uuid
-
-  accountId String @db.Uuid
-
-  userId String @db.Uuid
-
-  profileId String @db.Uuid
-
-  status MembershipStatus @default(ACTIVE)
-
-  createdAt DateTime @default(now())
-
-  updatedAt DateTime @updatedAt
-
-  // Relations
-
-  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  profile Profile @relation(fields: [profileId], references: [id], onDelete: Restrict)
-
-  notifications Notification[]
-
-  auditLogs AuditLog[]
-
-  @@unique([accountId, userId])
-  @@index([accountId])
-  @@index([userId])
-  @@map("memberships")
-}
-
-model Profile {
-  id String @id @default(uuid(7)) @db.Uuid
-
-  accountId String @db.Uuid
-
-  type ProfileType @default(CUSTOM)
-
-  name String @db.VarChar(100)
-
-  description String? @db.VarChar(500)
-
-  isDefault Boolean @default(false)
-
-  isProtected Boolean @default(false)
-
-  createdAt DateTime @default(now())
-
-  updatedAt DateTime @updatedAt
-
-  // Relations
-
-  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
-
-  memberships Membership[]
-
-  permissions ProfilePermission[]
-
-  overrides PermissionOverride[]
-
-  @@unique([accountId, name])
-  @@map("profiles")
-}
-
-enum TypePermission {
-  MENU
-  COMPONENT
-  API
-}
-
-model PermissionGroup {
-  id String @id @default(uuid(7)) @db.Uuid
-
-  name String @unique @db.VarChar(100)
-
-  active Boolean @default(true)
-
-  createdAt DateTime @default(now())
-
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  permissions Permission[]
-
-  @@map("permission_groups")
-}
-
-model Permission {
-  id String @id @default(uuid(7)) @db.Uuid
-
-  code String @unique @db.VarChar(150)
-
-  name String @db.VarChar(150)
-
-  permissionGroupId String? @db.Uuid
-
-  description String? @db.VarChar(500)
-
-  type TypePermission @default(API)
-
-  createdAt DateTime @default(now())
-
-  updatedAt DateTime @updatedAt
-
-  // Relations
-
-  group PermissionGroup? @relation(fields: [permissionGroupId], references: [id])
-
-  profiles ProfilePermission[]
-
-  overrides PermissionOverride[]
-
-  @@index([permissionGroupId])
-  @@map("permissions")
-}
-
-model ProfilePermission {
-  id String @id @default(uuid(7)) @db.Uuid
-
-  profileId String @db.Uuid
-
-  permissionId String @db.Uuid
-
-  createdAt DateTime @default(now())
-
-  // Relations
-
-  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
-
-  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
-
-  @@unique([profileId, permissionId])
-  @@map("profile_permissions")
-}
-
-model PermissionOverride {
-  id String @id @default(uuid(7)) @db.Uuid
-
-  profileId String @db.Uuid
-
-  permissionId String @db.Uuid
-
-  effect PermissionEffect
-
-  createdAt DateTime @default(now())
-
-  // Relations
-
-  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
-
-  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
-
-  @@unique([profileId, permissionId])
-  @@map("permission_overrides")
-}
-
-// ============================================================================
-// Business
-// ============================================================================
-
-model Company {
-  id String @id @default(uuid(7)) @db.Uuid
-
-  accountId String @unique @db.Uuid
-
-  logo String? @db.VarChar(1000)
-
-  corporateName String @db.VarChar(255)
-
-  tradeName String @db.VarChar(255)
-
-  document String @unique @db.VarChar(20)
-
-  email String @db.VarChar(255)
-
-  phone String? @db.VarChar(20)
-
-  whatsapp String? @db.VarChar(20)
-
-  website String? @db.VarChar(500)
-
-  createdAt DateTime @default(now())
-
-  updatedAt DateTime @updatedAt
-
-  deletedAt DateTime?
-
-  // Relations
-
-  account Account @relation(fields: [accountId], references: [id])
-
-  addresses Address[]
-
-  @@index([tradeName])
-  @@map("companies")
-}
-
-model Customer {
-  id String @id @default(uuid(7)) @db.Uuid
-
-  accountId String @unique @db.Uuid
-
-  photo String? @db.VarChar(1000)
-
-  document String? @db.VarChar(20)
-
-  birthDate DateTime?
-
-  gender Gender?
-
-  createdAt DateTime @default(now())
-
-  updatedAt DateTime @updatedAt
-
-  deletedAt DateTime?
-
-  // Relations
-
-  account Account @relation(fields: [accountId], references: [id])
-
-  addresses Address[]
-
-  @@index([document])
-  @@map("customers")
-}
-
-model Address {
-  id String @id @default(uuid(7)) @db.Uuid
-
-  companyId String? @db.Uuid
-
-  customerId String? @db.Uuid
-
-  zipCode String @db.VarChar(10)
-
-  street String @db.VarChar(255)
-
-  number String @db.VarChar(20)
-
-  complement String? @db.VarChar(255)
-
-  district String @db.VarChar(255)
-
-  city String @db.VarChar(255)
-
-  state String @db.VarChar(100)
-
-  country String @default("Brasil") @db.VarChar(100)
-
-  createdAt DateTime @default(now())
-
-  updatedAt DateTime @updatedAt
-
-  // Relations
-
-  company Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
-
-  customer Customer? @relation(fields: [customerId], references: [id], onDelete: Cascade)
-
-  @@index([companyId])
-  @@index([customerId])
-  @@map("addresses")
-}
-
-model Subscription {
-  id String @id @default(uuid(7)) @db.Uuid
-
-  accountId String @unique @db.Uuid
-
-  plan String @db.VarChar(100)
-
-  status SubscriptionStatus
-
-  billingCycle BillingCycle
-
-  trialEndsAt DateTime?
-
-  startsAt DateTime
-
-  expiresAt DateTime?
-
-  canceledAt DateTime?
-
-  createdAt DateTime @default(now())
-
-  updatedAt DateTime @updatedAt
-
-  // Relations
-
-  account Account @relation(fields: [accountId], references: [id])
-
-  @@index([status])
-  @@map("subscriptions")
-}
-
-model Branding {
-  id String @id @default(uuid(7)) @db.Uuid
-
-  accountId String @unique @db.Uuid
-
-  logo String? @db.VarChar(1000)
-
-  favicon String? @db.VarChar(1000)
-
-  primaryColor String? @db.VarChar(20)
-
-  secondaryColor String? @db.VarChar(20)
-
-  createdAt DateTime @default(now())
-
-  updatedAt DateTime @updatedAt
-
-  // Relations
-
-  account Account @relation(fields: [accountId], references: [id])
-
-  @@map("brandings")
-}
-
-model AccountSetting {
-  id String @id @default(uuid(7)) @db.Uuid
-
-  accountId String @unique @db.Uuid
-
-  language Language @default(PT_BR)
-
-  timezone String @default("America/Sao_Paulo")
-
-  dateFormat String @default("dd/MM/yyyy")
-
-  currency String @default("BRL")
-
-  notificationsEnabled Boolean @default(true)
-
-  createdAt DateTime @default(now())
-
-  updatedAt DateTime @updatedAt
-
-  // Relations
-
-  account Account @relation(fields: [accountId], references: [id])
-
-  @@map("account_settings")
-}
-
-// ============================================================================
-// Infrastructure
-// ============================================================================
-
-model Notification {
-  id String @id @default(uuid(7)) @db.Uuid
-
-  membershipId String @db.Uuid
-
-  type NotificationType
-
-  channel NotificationChannel @default(IN_APP)
-
-  title String @db.VarChar(255)
-
-  message String @db.Text
-
-  url String? @db.VarChar(500)
-
-  icon String? @db.VarChar(100)
-
-  readAt DateTime?
-
-  createdAt DateTime @default(now())
-
-  // Relations
-
-  membership Membership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
-
-  @@index([membershipId])
-  @@index([readAt])
-  @@map("notifications")
-}
-
-model AuditLog {
-  id String @id @default(uuid(7)) @db.Uuid
-
-  accountId String? @db.Uuid
-
-  membershipId String? @db.Uuid
-
-  entity String @db.VarChar(100)
-
-  entityId String @db.VarChar(100)
-
-  action String @db.VarChar(50)
-
-  description String? @db.Text
-
-  ipAddress String? @db.VarChar(45)
-
-  userAgent String? @db.VarChar(1000)
-
-  metadata Json?
-
-  createdAt DateTime @default(now())
-
-  // Relations
-
-  account Account? @relation(fields: [accountId], references: [id], onDelete: SetNull)
-
-  membership Membership? @relation(fields: [membershipId], references: [id], onDelete: SetNull)
-
-  @@index([accountId])
-  @@index([membershipId])
-  @@index([entity])
-  @@index([createdAt])
-  @@map("audit_logs")
-}
-
-// ============================================================================
-// Geographic
-// ============================================================================
-
-model Country {
-  id String @id @default(uuid(7)) @db.Uuid
-
-  code String @unique @db.VarChar(2)
-
-  name String @db.VarChar(100)
-
-  phoneCode String? @db.VarChar(10)
-
-  currency String? @db.VarChar(10)
-
-  active Boolean @default(true)
-
-  createdAt DateTime @default(now())
-
-  updatedAt DateTime @updatedAt
-
-  // Relations
-
-  states State[]
-
-  @@index([code])
-  @@map("countries")
-}
-
-model State {
-  id String @id @default(uuid(7)) @db.Uuid
-
-  countryId String @db.Uuid
-
-  code String @db.VarChar(5)
-
-  name String @db.VarChar(100)
-
-  active Boolean @default(true)
-
-  createdAt DateTime @default(now())
-
-  updatedAt DateTime @updatedAt
-
-  // Relations
-
-  country Country @relation(fields: [countryId], references: [id], onDelete: Cascade)
-
-  cities City[]
-
-  @@unique([countryId, code])
-  @@index([countryId])
-  @@map("states")
-}
-
-model City {
-  id String @id @default(uuid(7)) @db.Uuid
-
-  stateId String @db.Uuid
-
-  name String @db.VarChar(150)
-
-  ibgeCode String? @unique @db.VarChar(20)
-
-  active Boolean @default(true)
-
-  createdAt DateTime @default(now())
-
-  updatedAt DateTime @updatedAt
-
-  // Relations
-
-  state State @relation(fields: [stateId], references: [id], onDelete: Cascade)
-
-  @@unique([stateId, name])
-  @@index([stateId])
-  @@map("cities")
 }
 
 enum TicketStatus {
@@ -884,8 +138,409 @@ enum SenderType {
   SYSTEM
 }
 
+// ============================================================================
+// Identity
+// ============================================================================
+
+model User {
+  id        String     @id @default(uuid(7)) @db.Uuid
+  firstName String     @db.VarChar(100)
+  lastName  String?    @db.VarChar(100)
+  email     String     @unique @db.VarChar(255)
+  password  String     @db.VarChar(255)
+  phone     String?    @db.VarChar(20)
+  avatar    String?    @db.VarChar(1000)
+  status    UserStatus @default(PENDING_EMAIL)
+
+  theme      Theme      @default(SYSTEM)
+  language   Language   @default(PT_BR)
+  timeFormat TimeFormat @default(H24)
+  timezone   String     @default("America/Sao_Paulo") @db.VarChar(100)
+
+  emailVerifiedAt DateTime?
+  lastLoginAt     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
+
+  memberships    Membership[]
+  sessions       Session[]
+  socialAccounts SocialAccount[]
+  tokens         Token[]
+  tickets        TicketHelpdesk[]
+  ticketMessages TicketMessage[]
+
+  @@map("users")
+}
+
+model Session {
+  id                  String    @id @default(uuid(7)) @db.Uuid
+  userId              String    @db.Uuid
+  currentMembershipId String?   @db.Uuid
+  refreshToken        String    @unique @db.VarChar(512)
+  ipAddress           String?   @db.VarChar(45)
+  userAgent           String?   @db.VarChar(1000)
+  expiresAt           DateTime
+  revokedAt           DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+  @@map("sessions")
+}
+
+model Token {
+  id        String    @id @default(uuid(7)) @db.Uuid
+  userId    String    @db.Uuid
+  type      TokenType
+  token     String    @unique @db.VarChar(255)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("tokens")
+}
+
+model SocialAccount {
+  id             String         @id @default(uuid(7)) @db.Uuid
+  userId         String         @db.Uuid
+  provider       SocialProvider
+  providerUserId String         @db.VarChar(255)
+  username       String?        @db.VarChar(255)
+  displayName    String?        @db.VarChar(255)
+  avatarUrl      String?        @db.VarChar(1000)
+  accessToken    String?        @db.Text
+  refreshToken   String?        @db.Text
+  expiresAt      DateTime?
+  connectedAt    DateTime       @default(now())
+  lastSyncAt     DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerUserId])
+  @@index([userId])
+  @@map("social_accounts")
+}
+
+// ============================================================================
+// Authorization
+// ============================================================================
+
+model Account {
+  id     String      @id @default(uuid(7)) @db.Uuid
+  type   AccountType
+  name   String      @db.VarChar(255)
+  slug   String      @unique @db.VarChar(255)
+  avatar String?     @db.VarChar(1000)
+  active Boolean     @default(true)
+
+  language             Language @default(PT_BR)
+  timezone             String   @default("America/Sao_Paulo") @db.VarChar(100)
+  dateFormat           String   @default("dd/MM/yyyy") @db.VarChar(20)
+  currency             String   @default("BRL") @db.VarChar(10)
+  notificationsEnabled Boolean  @default(true)
+  logo                 String?  @db.VarChar(1000)
+  favicon              String?  @db.VarChar(1000)
+  primaryColor         String?  @db.VarChar(20)
+  secondaryColor       String?  @db.VarChar(20)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  memberships  Membership[]
+  profiles     Profile[]
+  company      Company?
+  customer     Customer?
+  subscription Subscription?
+  auditLogs    AuditLog[]
+  addresses    Address[]
+  tickets      TicketHelpdesk[]
+
+  @@index([type])
+  @@index([active])
+  @@map("accounts")
+}
+
+model Membership {
+  id        String           @id @default(uuid(7)) @db.Uuid
+  accountId String           @db.Uuid
+  userId    String           @db.Uuid
+  profileId String           @db.Uuid
+  status    MembershipStatus @default(ACTIVE)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  account       Account        @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  profile       Profile        @relation(fields: [profileId], references: [id], onDelete: Restrict)
+  notifications Notification[]
+  auditLogs     AuditLog[]
+
+  @@unique([accountId, userId])
+  @@index([userId])
+  @@index([accountId, status])
+  @@map("memberships")
+}
+
+model Profile {
+  id          String      @id @default(uuid(7)) @db.Uuid
+  accountId   String      @db.Uuid
+  type        ProfileType @default(CUSTOM)
+  name        String      @db.VarChar(100)
+  description String?     @db.VarChar(500)
+  isDefault   Boolean     @default(false)
+  isProtected Boolean     @default(false)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  account     Account              @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  memberships Membership[]
+  permissions ProfilePermission[]
+  overrides   PermissionOverride[]
+
+  @@unique([accountId, name])
+  @@map("profiles")
+}
+
+model PermissionGroup {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  name      String   @unique @db.VarChar(100)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  permissions Permission[]
+
+  @@map("permission_groups")
+}
+
+model Permission {
+  id                String         @id @default(uuid(7)) @db.Uuid
+  code              String         @unique @db.VarChar(150)
+  name              String         @db.VarChar(150)
+  permissionGroupId String?        @db.Uuid
+  description       String?        @db.VarChar(500)
+  type              TypePermission @default(API)
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  group     PermissionGroup?     @relation(fields: [permissionGroupId], references: [id], onDelete: SetNull)
+  profiles  ProfilePermission[]
+  overrides PermissionOverride[]
+
+  @@index([permissionGroupId])
+  @@map("permissions")
+}
+
+model ProfilePermission {
+  id           String   @id @default(uuid(7)) @db.Uuid
+  profileId    String   @db.Uuid
+  permissionId String   @db.Uuid
+  createdAt    DateTime @default(now())
+
+  profile    Profile    @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([profileId, permissionId])
+  @@map("profile_permissions")
+}
+
+model PermissionOverride {
+  id           String           @id @default(uuid(7)) @db.Uuid
+  profileId    String           @db.Uuid
+  permissionId String           @db.Uuid
+  effect       PermissionEffect
+  createdAt    DateTime         @default(now())
+
+  profile    Profile    @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([profileId, permissionId])
+  @@map("permission_overrides")
+}
+
+// ============================================================================
+// Business
+// ============================================================================
+
+model Company {
+  id            String    @id @default(uuid(7)) @db.Uuid
+  accountId     String    @unique @db.Uuid
+  corporateName String    @db.VarChar(255)
+  tradeName     String    @db.VarChar(255)
+  document      String    @unique @db.VarChar(20)
+  email         String    @db.VarChar(255)
+  phone         String?   @db.VarChar(20)
+  whatsapp      String?   @db.VarChar(20)
+  website       String?   @db.VarChar(500)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([tradeName])
+  @@map("companies")
+}
+
+model Customer {
+  id        String    @id @default(uuid(7)) @db.Uuid
+  accountId String    @unique @db.Uuid
+  document  String?   @db.VarChar(20)
+  birthDate DateTime?
+  gender    Gender?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([document])
+  @@map("customers")
+}
+
+model Address {
+  id         String   @id @default(uuid(7)) @db.Uuid
+  accountId  String   @db.Uuid
+  countryId  String   @db.Uuid
+  zipCode    String   @db.VarChar(10)
+  street     String   @db.VarChar(255)
+  number     String   @db.VarChar(20)
+  complement String?  @db.VarChar(255)
+  district   String   @db.VarChar(255)
+  city       String   @db.VarChar(255)
+  state      String   @db.VarChar(100)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  country Country @relation(fields: [countryId], references: [id], onDelete: Restrict)
+
+  @@index([accountId])
+  @@map("addresses")
+}
+
+model Country {
+  id           String   @id @default(uuid(7)) @db.Uuid
+  name         String   @unique @db.VarChar(100)
+  code         String   @unique @db.VarChar(2)
+  phoneCode    String?  @db.VarChar(10)
+  currency     String?  @db.VarChar(10)
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  states       State[]
+  addresses    Address[]
+
+  @@map("countries")
+}
+
+model State {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  countryId String   @db.Uuid
+  name      String   @db.VarChar(100)
+  code      String   @db.VarChar(2)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  country Country @relation(fields: [countryId], references: [id], onDelete: Cascade)
+  cities  City[]
+
+  @@unique([countryId, code])
+  @@map("states")
+}
+
+model City {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  stateId   String   @db.Uuid
+  name      String   @db.VarChar(255)
+  ibgeCode  String?  @unique @db.VarChar(10)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  state     State     @relation(fields: [stateId], references: [id], onDelete: Cascade)
+
+  @@unique([stateId, name])
+  @@index([stateId])
+  @@map("cities")
+}
+
+model Subscription {
+  id           String             @id @default(uuid(7)) @db.Uuid
+  accountId    String             @unique @db.Uuid
+  plan         String             @db.VarChar(100)
+  status       SubscriptionStatus
+  billingCycle BillingCycle
+  trialEndsAt  DateTime?
+  startsAt     DateTime
+  expiresAt    DateTime?
+  canceledAt   DateTime?
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@map("subscriptions")
+}
+
+// ============================================================================
+// Infrastructure
+// ============================================================================
+
+model Notification {
+  id           String              @id @default(uuid(7)) @db.Uuid
+  membershipId String              @db.Uuid
+  type         NotificationType
+  channel      NotificationChannel @default(IN_APP)
+  title        String              @db.VarChar(255)
+  message      String              @db.Text
+  url          String?             @db.VarChar(500)
+  icon         String?             @db.VarChar(100)
+  readAt       DateTime?
+  createdAt    DateTime            @default(now())
+
+  membership Membership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+
+  @@index([membershipId, readAt])
+  @@map("notifications")
+}
+
+model AuditLog {
+  id           String   @id @default(uuid(7)) @db.Uuid
+  accountId    String?  @db.Uuid
+  membershipId String?  @db.Uuid
+  entity       String   @db.VarChar(100)
+  entityId     String   @db.VarChar(255)
+  action       String   @db.VarChar(100)
+  description  String?  @db.Text
+  ipAddress    String?  @db.VarChar(45)
+  userAgent    String?  @db.VarChar(1000)
+  metadata     Json?
+  createdAt    DateTime @default(now())
+
+  account    Account?    @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  membership Membership? @relation(fields: [membershipId], references: [id], onDelete: SetNull)
+
+  @@index([accountId, createdAt(sort: Desc)])
+  @@index([entity, entityId])
+  @@map("audit_logs")
+}
+
 model TicketHelpdesk {
   id          String         @id @default(uuid(7)) @db.Uuid
+  accountId   String         @db.Uuid
   userId      String         @db.Uuid
   title       String         @db.VarChar(500)
   description String         @db.Text
@@ -894,20 +549,17 @@ model TicketHelpdesk {
   category    String?        @db.VarChar(100)
   attachments Json?
   assignedTo  String?        @db.VarChar(255)
-  resolvedAt  DateTime?      @db.Timestamp(6)
-  createdAt   DateTime       @default(now()) @db.Timestamp(6)
-  updatedAt   DateTime       @updatedAt @db.Timestamp(6)
-  deletedAt   DateTime?      @db.Timestamp(6)
+  resolvedAt  DateTime?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  deletedAt   DateTime?
 
-  // Relations
-  user     User            @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  account  Account         @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  user     User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   messages TicketMessage[]
 
-  @@index([userId], name: "idx_ticket_user_id")
-  @@index([status], name: "idx_ticket_status")
-  @@index([priority], name: "idx_ticket_priority")
-  @@index([createdAt], name: "idx_ticket_created_at")
-  @@index([deletedAt], name: "idx_ticket_deleted_at")
+  @@index([accountId, status])
+  @@index([userId])
   @@map("tickets_helpdesk")
 }
 
@@ -919,15 +571,12 @@ model TicketMessage {
   senderName  String?    @db.VarChar(255)
   content     String     @db.Text
   attachments Json?
-  createdAt   DateTime   @default(now()) @db.Timestamp(6)
+  createdAt   DateTime   @default(now())
 
-  // Relations
-  ticket TicketHelpdesk @relation(fields: [ticketId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  user   User?          @relation(fields: [userId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  ticket TicketHelpdesk @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  user   User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
 
-  @@index([ticketId], name: "idx_ticket_message_ticket_id")
-  @@index([userId], name: "idx_ticket_message_user_id")
-  @@index([createdAt], name: "idx_ticket_message_created_at")
+  @@index([ticketId, createdAt(sort: Asc)])
   @@map("ticket_messages")
 }
 
@@ -941,12 +590,9 @@ model FAQ {
   notHelpful Int      @default(0)
   isActive   Boolean  @default(true)
   order      Int      @default(0)
-  createdAt  DateTime @default(now()) @db.Timestamp(6)
-  updatedAt  DateTime @updatedAt @db.Timestamp(6)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
-  // Relations
-  @@index([category], name: "idx_faq_category")
-  @@index([isActive], name: "idx_faq_active")
-  @@index([order], name: "idx_faq_order")
+  @@index([isActive, order])
   @@map("faqs")
 }

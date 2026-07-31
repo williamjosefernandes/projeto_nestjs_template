@@ -28,14 +28,12 @@ export async function seedCustomers(
         document: customer.document,
         birthDate: customer.birthDate,
         gender: customer.gender as Gender,
-        photo: customer.photo,
       },
       create: {
         accountId: account.id,
         document: customer.document,
         birthDate: customer.birthDate,
         gender: customer.gender as Gender,
-        photo: customer.photo,
       },
     });
   }

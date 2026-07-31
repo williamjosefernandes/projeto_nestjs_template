@@ -162,8 +162,7 @@ export class UsersController {
     if (user) {
       delete user.password;
       delete user.refreshTokenHash;
-      delete user.verificationTokens;
-      delete user.passwordResetTokens;
+      delete user.tokens;
     }
     return user;
   }

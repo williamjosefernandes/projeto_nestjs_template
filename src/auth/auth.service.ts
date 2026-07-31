@@ -223,10 +223,10 @@ export class AuthService {
     });
 
     const verificationCode = this.generateEmailVerificationCode();
-    await this.prisma.verificationToken.create({
+    await this.prisma.token.create({
       data: {
         userId: user.id,
-        code: verificationCode,
+        token: verificationCode,
         type: 'EMAIL_VERIFICATION',
         expiresAt: addMinutes(new Date(), 10),
       },
@@ -242,10 +242,10 @@ export class AuthService {
     const user = await this.usersService.findByEmail(email);
     if (!user) throw new BadRequestException('Código inválido');
 
-    const token = await this.prisma.verificationToken.findFirst({
+    const token = await this.prisma.token.findFirst({
       where: {
         userId: user.id,
-        code,
+        token: code,
         type: 'EMAIL_VERIFICATION',
         usedAt: null,
       },
@@ -263,22 +263,22 @@ export class AuthService {
       },
     });
 
-    await this.prisma.verificationToken.delete({ where: { id: token.id } });
+    await this.prisma.token.delete({ where: { id: token.id } });
   }
 
   async resendVerification(email: string) {
     const user = await this.usersService.findByEmail(email);
     if (!user || user.emailVerifiedAt) return;
 
-    await this.prisma.verificationToken.deleteMany({
+    await this.prisma.token.deleteMany({
       where: { userId: user.id, type: 'EMAIL_VERIFICATION' },
     });
 
     const verificationCode = this.generateEmailVerificationCode();
-    await this.prisma.verificationToken.create({
+    await this.prisma.token.create({
       data: {
         userId: user.id,
-        code: verificationCode,
+        token: verificationCode,
         type: 'EMAIL_VERIFICATION',
         expiresAt: addMinutes(new Date(), 10),
       },
@@ -292,10 +292,11 @@ export class AuthService {
     if (!user) return; // Prevent user enumeration
 
     const resetToken = uuidv4();
-    await this.prisma.passwordResetToken.create({
+    await this.prisma.token.create({
       data: {
         userId: user.id,
-        tokenHash: await bcrypt.hash(resetToken, 10),
+        type: 'PASSWORD_RESET',
+        token: await bcrypt.hash(resetToken, 10),
         expiresAt: addMinutes(new Date(), 30),
       },
     });
@@ -309,17 +310,13 @@ export class AuthService {
   }
 
   async resetPassword(dto: ResetPasswordDto) {
-    // Basic verification token validation (needs improvement with tokenHash for prod)
-    // For simplicity we assume dto.token is matched against tokenHash in DB securely,
-    // Or we store the token direct in tokenHash (not ideal but works for this level of abstraction)
-    // Actually, prisma schema uses 'tokenHash' as String. So we should search and verify.
-    const tokens = await this.prisma.passwordResetToken.findMany({
-      where: { usedAt: null },
+    const tokens = await this.prisma.token.findMany({
+      where: { usedAt: null, type: 'PASSWORD_RESET' },
     });
 
     let foundToken = null;
     for (const t of tokens) {
-      if (await bcrypt.compare(dto.token, t.tokenHash)) {
+      if (await bcrypt.compare(dto.token, t.token)) {
         foundToken = t;
         break;
       }
@@ -336,7 +333,7 @@ export class AuthService {
       data: { password: hashedPassword },
     });
 
-    await this.prisma.passwordResetToken.delete({
+    await this.prisma.token.delete({
       where: { id: foundToken.id },
     });
 

@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsEnum, IsUUID } from 'class-validator';
+import { IsString, IsOptional, IsEnum } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Theme, Language, TimeFormat } from '@prisma/client';
 
@@ -22,9 +22,4 @@ export class UpdatePreferencesDto {
   @IsOptional()
   @IsString()
   timezone?: string;
-
-  @ApiPropertyOptional({ example: 'uuid-do-membership' })
-  @IsOptional()
-  @IsUUID()
-  defaultMembershipId?: string;
 }
