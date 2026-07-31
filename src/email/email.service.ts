@@ -1,4 +1,4 @@
-import { HttpException, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
 import * as path from 'path';
@@ -6,6 +6,8 @@ import { passwordTemplate } from 'src/templates/password-reset-template';
 import { emailConfirmTemplate } from 'src/templates/email-confirm-template';
 import { BcryptService } from '../common/service/bcrypt.service';
 import { PrismaService } from '../database/prisma.service';
+import { ErrorCode } from '../common/enum/error-code.enum';
+import { InternalServerErrorAppException } from '../common/exceptions/app.exception';
 
 @Injectable()
 export class EmailService {
@@ -29,7 +31,7 @@ export class EmailService {
     });
 
     transport.on('error', (error) => {
-      throw new HttpException(`Erro SMTP: ${error}`, 500);
+      throw new InternalServerErrorAppException(ErrorCode.EMAIL_DELIVERY_FAILED, { cause: String(error) });
     });
 
     return transport;

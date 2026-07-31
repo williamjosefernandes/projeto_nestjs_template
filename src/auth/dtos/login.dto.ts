@@ -1,15 +1,16 @@
 import { IsEmail, IsNotEmpty, MinLength, IsEnum, IsOptional, ValidateIf } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiPropertyOptional } from '@nestjs/swagger';
 import { AuthProvider } from '@prisma/client';
 
 export class LoginDto {
-  @ApiProperty()
+  @ApiPropertyOptional({ description: 'Obrigatório apenas quando authProvider é LOCAL.' })
+  @ValidateIf((o) => !o.authProvider || o.authProvider === AuthProvider.LOCAL)
   @IsEmail()
   @IsNotEmpty()
-  email!: string;
+  email?: string;
 
-  @ApiProperty()
-  @ValidateIf((o) => o.authProvider === AuthProvider.LOCAL)
+  @ApiPropertyOptional({ description: 'Obrigatório apenas quando authProvider é LOCAL.' })
+  @ValidateIf((o) => !o.authProvider || o.authProvider === AuthProvider.LOCAL)
   @MinLength(6)
   @IsNotEmpty()
   password?: string;

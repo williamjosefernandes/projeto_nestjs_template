@@ -1,6 +1,8 @@
-import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@nestjs/common';
+import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { ROLES_KEY } from '../decorators/roles.decorator';
+import { ErrorCode } from '../enum/error-code.enum';
+import { ForbiddenAppException } from '../exceptions/app.exception';
 
 @Injectable()
 export class RolesGuard implements CanActivate {
@@ -19,7 +21,7 @@ export class RolesGuard implements CanActivate {
     const { user } = context.switchToHttp().getRequest();
     
     if (!user) {
-      throw new ForbiddenException('User is not authenticated');
+      throw new ForbiddenAppException(ErrorCode.UNAUTHENTICATED);
     }
 
     // Role check logic depends on how user permissions are stored in the request
@@ -27,9 +29,9 @@ export class RolesGuard implements CanActivate {
     // If not, we allow for now, but this should check against context permissions
     const userRoles: string[] = user.permissions || [user.role].filter(Boolean);
     const hasRole = requiredRoles.some((role) => userRoles.includes(role));
-    
+
     if (!hasRole) {
-      throw new ForbiddenException(`Require one of the following roles/permissions: ${requiredRoles.join(', ')}`);
+      throw new ForbiddenAppException(ErrorCode.PERMISSION_DENIED, { requiredRoles });
     }
 
     return true;

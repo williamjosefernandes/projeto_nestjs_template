@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ConflictException, UnauthorizedException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import { User, Prisma, UserStatus } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
@@ -6,6 +6,13 @@ import { UpdateProfileDto } from './dtos/update-profile.dto';
 import { ChangePasswordDto } from './dtos/change-password.dto';
 import { UpdatePreferencesDto } from './dtos/update-preferences.dto';
 import { CreateUserAdminDto, UpdateUserAdminDto, UpdateUserStatusDto } from './dtos/admin-users.dto';
+import { ErrorCode } from '../common/enum/error-code.enum';
+import {
+  NotFoundAppException,
+  BadRequestAppException,
+  ForbiddenAppException,
+  ConflictAppException,
+} from '../common/exceptions/app.exception';
 
 @Injectable()
 export class UsersService {
@@ -19,8 +26,20 @@ export class UsersService {
     return this.prisma.user.findUnique({ where: { id } });
   }
 
-  async findByEmail(email: string) {
+  async findByEmail(email?: string | null) {
+    if (!email) return null;
     return this.prisma.user.findUnique({ where: { email } });
+  }
+
+  /** Busca pela chave de login universal (email, telefone ou UID do Firebase — o que identificar o usuário no provider usado). */
+  async findByUsername(username?: string | null) {
+    if (!username) return null;
+    return this.prisma.user.findUnique({ where: { username } });
+  }
+
+  async findByPhone(phone?: string | null) {
+    if (!phone) return null;
+    return this.prisma.user.findUnique({ where: { phone } });
   }
 
   async create(data: Prisma.UserCreateInput) {
@@ -39,7 +58,7 @@ export class UsersService {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
     });
-    if (!user) throw new NotFoundException('User not found');
+    if (!user) throw new NotFoundAppException(ErrorCode.USER_NOT_FOUND);
     return user;
   }
 
@@ -73,10 +92,11 @@ export class UsersService {
 
   async changePassword(userId: string, dto: ChangePasswordDto) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user) throw new NotFoundException('User not found');
+    if (!user) throw new NotFoundAppException(ErrorCode.USER_NOT_FOUND);
 
+    if (!user.password) throw new BadRequestAppException(ErrorCode.INVALID_CURRENT_PASSWORD);
     const isValid = await bcrypt.compare(dto.currentPassword, user.password);
-    if (!isValid) throw new BadRequestException('Invalid current password');
+    if (!isValid) throw new BadRequestAppException(ErrorCode.INVALID_CURRENT_PASSWORD);
 
     const newHash = await bcrypt.hash(dto.newPassword, 10);
 
@@ -103,7 +123,7 @@ export class UsersService {
         timeFormat: true,
       },
     });
-    if (!user) throw new NotFoundException('User not found');
+    if (!user) throw new NotFoundAppException(ErrorCode.USER_NOT_FOUND);
     return user;
   }
 
@@ -140,7 +160,7 @@ export class UsersService {
       }
     });
 
-    if (!membership) throw new ForbiddenException('User is not a member of this account');
+    if (!membership) throw new ForbiddenAppException(ErrorCode.USER_NOT_MEMBER_OF_ACCOUNT);
 
     // Mapeamento mockado das permissões do profile
     const permissions = membership.profile.permissions.map(p => p.permission.code);
@@ -160,7 +180,7 @@ export class UsersService {
     const session = await this.prisma.session.findFirst({
       where: { id: sessionId, userId },
     });
-    if (!session) throw new NotFoundException('Session not found');
+    if (!session) throw new NotFoundAppException(ErrorCode.SESSION_NOT_FOUND);
 
     await this.prisma.session.update({
       where: { id: sessionId },
@@ -178,7 +198,7 @@ export class UsersService {
       where: { userId: id, accountId: currentAccountId },
       include: { user: true },
     });
-    if (!membership) throw new NotFoundException('User not found in this account');
+    if (!membership) throw new NotFoundAppException(ErrorCode.USER_NOT_FOUND_IN_ACCOUNT);
 
     return {
       id: membership.user.id,
@@ -229,6 +249,7 @@ export class UsersService {
           data: {
             firstName: dto.firstName,
             lastName: dto.lastName,
+            username: dto.email,
             email: dto.email,
             phone: dto.phone,
             password: 'TEMP_PASSWORD_NEEDS_RESET', // Mock password until reset logic
@@ -240,7 +261,7 @@ export class UsersService {
         where: { userId: user.id, accountId: currentAccountId }
       });
 
-      if (existingMem) throw new ConflictException('User is already in this account');
+      if (existingMem) throw new ConflictAppException(ErrorCode.USER_ALREADY_IN_ACCOUNT);
 
       await tx.membership.create({
         data: {
@@ -260,7 +281,7 @@ export class UsersService {
     const mem = await this.prisma.membership.findFirst({
       where: { userId: id, accountId: currentAccountId }
     });
-    if (!mem) throw new NotFoundException('User not found in account');
+    if (!mem) throw new NotFoundAppException(ErrorCode.USER_NOT_FOUND_IN_ACCOUNT);
 
     return this.prisma.user.update({
       where: { id },
@@ -277,9 +298,9 @@ export class UsersService {
       where: { userId: id, accountId: currentAccountId },
       include: { profile: true }
     });
-    if (!mem) throw new NotFoundException('User not found in account');
+    if (!mem) throw new NotFoundAppException(ErrorCode.USER_NOT_FOUND_IN_ACCOUNT);
     // Basic owner protection logic (simplified)
-    if (mem.profile.name === 'OWNER') throw new ForbiddenException('Cannot delete owner');
+    if (mem.profile.name === 'OWNER') throw new ForbiddenAppException(ErrorCode.CANNOT_DELETE_OWNER);
 
     await this.prisma.membership.update({
       where: { id: mem.id },
@@ -292,9 +313,9 @@ export class UsersService {
       where: { userId: id, accountId: currentAccountId },
       include: { profile: true }
     });
-    if (!mem) throw new NotFoundException('User not found in account');
+    if (!mem) throw new NotFoundAppException(ErrorCode.USER_NOT_FOUND_IN_ACCOUNT);
     if (mem.profile.name === 'OWNER' && dto.status === 'BLOCKED') {
-      throw new ForbiddenException('Cannot block owner');
+      throw new ForbiddenAppException(ErrorCode.CANNOT_BLOCK_OWNER);
     }
 
     await this.prisma.membership.update({

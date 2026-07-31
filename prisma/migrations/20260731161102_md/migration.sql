@@ -1,5 +1,5 @@
 -- CreateEnum
-CREATE TYPE "AuthProvider" AS ENUM ('LOCAL', 'PHONE', 'GOOGLE', 'APPLE', 'FACEBOOK');
+CREATE TYPE "AuthProvider" AS ENUM ('LOCAL', 'PHONE', 'GOOGLE', 'APPLE', 'FACEBOOK', 'GITHUB', 'ANONYMOUS');
 
 -- CreateEnum
 CREATE TYPE "UserStatus" AS ENUM ('PENDING_EMAIL', 'ACTIVE', 'BLOCKED', 'SUSPENDED');
@@ -63,8 +63,9 @@ CREATE TABLE "users" (
     "id" UUID NOT NULL,
     "firstName" VARCHAR(100) NOT NULL,
     "lastName" VARCHAR(100),
-    "email" VARCHAR(255) NOT NULL,
-    "password" VARCHAR(255) NOT NULL,
+    "username" VARCHAR(255) NOT NULL,
+    "email" VARCHAR(255),
+    "password" VARCHAR(255),
     "phone" VARCHAR(20),
     "avatar" VARCHAR(1000),
     "status" "UserStatus" NOT NULL DEFAULT 'PENDING_EMAIL',
@@ -421,7 +422,13 @@ CREATE TABLE "faqs" (
 );
 
 -- CreateIndex
+CREATE UNIQUE INDEX "users_username_key" ON "users"("username");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "users_email_key" ON "users"("email");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "users_phone_key" ON "users"("phone");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "sessions_refreshToken_key" ON "sessions"("refreshToken");

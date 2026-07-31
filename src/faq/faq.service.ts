@@ -1,7 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import { CreateFaqDto } from './dtos/create-faq.dto';
 import { UpdateFaqDto } from './dtos/update-faq.dto';
+import { ErrorCode } from '../common/enum/error-code.enum';
+import { NotFoundAppException } from '../common/exceptions/app.exception';
 
 @Injectable()
 export class FaqService {
@@ -20,7 +22,7 @@ export class FaqService {
 
   async findOne(id: string) {
     const faq = await this.prisma.fAQ.findUnique({ where: { id } });
-    if (!faq) throw new NotFoundException('FAQ not found');
+    if (!faq) throw new NotFoundAppException(ErrorCode.FAQ_NOT_FOUND);
     
     // increment views
     return this.prisma.fAQ.update({

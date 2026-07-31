@@ -17,6 +17,7 @@ export async function seedUsers(
       update: {
         firstName: user.firstName,
         lastName: user.lastName,
+        username: user.email,
         password: passwordHash,
         status: UserStatus.ACTIVE,
         emailVerifiedAt: new Date(),
@@ -25,6 +26,7 @@ export async function seedUsers(
       create: {
         firstName: user.firstName,
         lastName: user.lastName,
+        username: user.email,
         email: user.email,
         password: passwordHash,
         status: UserStatus.ACTIVE,

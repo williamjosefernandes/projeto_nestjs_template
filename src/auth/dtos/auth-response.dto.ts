@@ -16,8 +16,12 @@ export class UserResponseDto {
   @ApiProperty()
   id!: string;
 
-  @ApiProperty()
-  email!: string;
+  @ApiProperty({
+    required: false,
+    nullable: true,
+    description: 'Pode ser nulo para contas provisionadas via login por telefone ou anônimo.',
+  })
+  email?: string | null;
 
   @ApiProperty()
   firstName!: string;

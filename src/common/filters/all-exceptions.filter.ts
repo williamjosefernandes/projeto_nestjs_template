@@ -1,126 +1,82 @@
 import { ExceptionFilter, Catch, ArgumentsHost, HttpException, HttpStatus, Logger } from '@nestjs/common';
-import { v4 as uuidv4 } from 'uuid';
+import { AppException, AppExceptionBody } from '../exceptions/app.exception';
+import { ErrorCode } from '../enum/error-code.enum';
+import { ErrorMessage } from '../enum/error-message.map';
+import { generateRequestId } from '../utils/request-id.util';
+
+interface ResolvedError {
+  code: ErrorCode;
+  message: string;
+  details?: unknown;
+}
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
   private readonly logger = new Logger(AllExceptionsFilter.name);
 
-  private getErrorCode(status: number, message: string): string {
-    if (message.includes('Invalid email or password') || message.includes('Invalid credentials')) {
-      return 'INVALID_EMAIL_OR_PASSWORD';
-    }
-    if (message.includes('Email not verified')) {
-      return 'EMAIL_NOT_VERIFIED';
-    }
-    if (message.includes('Account locked')) {
-      return 'ACCOUNT_LOCKED';
-    }
-    if (message.includes('Account disabled')) {
-      return 'ACCOUNT_DISABLED';
-    }
-    if (message.includes('Account deleted')) {
-      return 'ACCOUNT_DELETED';
-    }
-    if (message.includes('Password expired')) {
-      return 'PASSWORD_EXPIRED';
-    }
-    if (message.includes('Too many attempts')) {
-      return 'TOO_MANY_ATTEMPTS';
-    }
-    if (message.includes('Invalid refresh token')) {
-      return 'INVALID_REFRESH_TOKEN';
-    }
-    if (message.includes('Token expired')) {
-      return 'TOKEN_EXPIRED';
-    }
-    if (message.includes('Token revoked')) {
-      return 'TOKEN_REVOKED';
-    }
-    if (message.includes('Session expired')) {
-      return 'SESSION_EXPIRED';
-    }
-    if (message.includes('Invalid email')) {
-      return 'INVALID_EMAIL';
-    }
-    if (message.includes('Invalid password')) {
-      return 'INVALID_PASSWORD';
-    }
-    if (message.includes('Invalid code')) {
-      return 'INVALID_CODE';
-    }
-    if (message.includes('Code expired')) {
-      return 'CODE_EXPIRED';
-    }
-    if (message.includes('Password too weak')) {
-      return 'PASSWORD_TOO_WEAK';
-    }
-    if (message.includes('Password reused')) {
-      return 'PASSWORD_REUSED';
-    }
-    if (message.includes('Token invalid')) {
-      return 'TOKEN_INVALID';
-    }
-    if (message.includes('Token already used')) {
-      return 'TOKEN_ALREADY_USED';
-    }
-    if (status === HttpStatus.UNAUTHORIZED) {
-      return 'UNAUTHORIZED';
-    }
-    if (status === HttpStatus.FORBIDDEN) {
-      return 'FORBIDDEN';
-    }
-    if (status === HttpStatus.NOT_FOUND) {
-      return 'NOT_FOUND';
-    }
-    if (status === HttpStatus.CONFLICT) {
-      return 'CONFLICT';
-    }
-    if (status === HttpStatus.BAD_REQUEST) {
-      return 'BAD_REQUEST';
-    }
-    if (status === HttpStatus.INTERNAL_SERVER_ERROR) {
-      return 'INTERNAL_SERVER_ERROR';
-    }
-    return 'UNKNOWN_ERROR';
-  }
-
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse();
-    const request = ctx.getRequest();
 
     const status =
-      exception instanceof HttpException
-        ? exception.getStatus()
-        : HttpStatus.INTERNAL_SERVER_ERROR;
+      exception instanceof HttpException ? exception.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR;
 
-    let message =
-      exception instanceof HttpException
-        ? exception.getResponse()
-        : exception instanceof Error
-        ? exception.message
-        : 'Internal server error';
+    const { code, message, details } = this.resolveError(exception, status);
+    const rawMessage = exception instanceof Error ? exception.message : String(exception);
 
-    const messageString = typeof message === 'object' && (message as any).message ? (message as any).message : String(message);
+    this.logger.error(`HTTP ${status} [${code}] ${rawMessage}`, exception instanceof Error ? exception.stack : undefined);
 
-    this.logger.error(
-      `HTTP Status: ${status} Error Message: ${messageString}`,
-      exception instanceof Error ? exception.stack : '',
-    );
-
-    const errorCode = this.getErrorCode(status, messageString);
-    const requestId = `req_${uuidv4().substring(0, 8)}`;
-
-    const errorResponse = {
+    response.status(status).json({
       success: false,
       timestamp: new Date().toISOString(),
-      error: {
-        code: errorCode,
-        message: messageString,
-      },
-      requestId,
-    };
+      error: { code, message, ...(details !== undefined ? { details } : {}) },
+      requestId: generateRequestId(),
+    });
+  }
 
-    response.status(status).json(errorResponse);
+  /**
+   * Toda exceção da aplicação deve ser um `AppException` (código + mensagem
+   * já resolvidos via `ErrorMessage`). Os demais ramos são fallback
+   * defensivo para exceções de terceiros (Passport, Prisma, etc.) — a
+   * mensagem exibida ao usuário vem sempre do mapa, nunca do texto bruto da
+   * exceção (que só é logado, nunca devolvido na resposta).
+   */
+  private resolveError(exception: unknown, status: number): ResolvedError {
+    if (exception instanceof AppException) {
+      const body = exception.getResponse() as AppExceptionBody;
+      return { code: body.code, message: body.message, details: body.details };
+    }
+
+    if (exception instanceof HttpException) {
+      const body = exception.getResponse();
+      const rawMessage = typeof body === 'object' && body !== null && 'message' in body ? (body as any).message : body;
+
+      // ValidationPipe (class-validator) reporta uma lista de mensagens, uma por violação.
+      if (Array.isArray(rawMessage)) {
+        return { code: ErrorCode.VALIDATION_ERROR, message: ErrorMessage[ErrorCode.VALIDATION_ERROR], details: rawMessage };
+      }
+
+      const code = this.fallbackCodeForStatus(status);
+      return { code, message: ErrorMessage[code] };
+    }
+
+    return { code: ErrorCode.INTERNAL_SERVER_ERROR, message: ErrorMessage[ErrorCode.INTERNAL_SERVER_ERROR] };
+  }
+
+  private fallbackCodeForStatus(status: number): ErrorCode {
+    switch (status) {
+      case HttpStatus.UNAUTHORIZED:
+        return ErrorCode.UNAUTHENTICATED;
+      case HttpStatus.FORBIDDEN:
+        return ErrorCode.PERMISSION_DENIED;
+      case HttpStatus.NOT_FOUND:
+        return ErrorCode.NOT_FOUND;
+      case HttpStatus.CONFLICT:
+        return ErrorCode.CONFLICT;
+      case HttpStatus.BAD_REQUEST:
+        return ErrorCode.BAD_REQUEST;
+      default:
+        return ErrorCode.INTERNAL_SERVER_ERROR;
+    }
   }
 }

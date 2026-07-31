@@ -25,6 +25,8 @@ enum AuthProvider {
   GOOGLE
   APPLE
   FACEBOOK
+  GITHUB
+  ANONYMOUS
 }
 
 enum UserStatus {
@@ -151,12 +153,16 @@ enum SenderType {
 // ============================================================================
 
 model User {
-  id        String     @id @default(uuid(7)) @db.Uuid
-  firstName String     @db.VarChar(100)
-  lastName  String?    @db.VarChar(100)
-  email     String     @unique @db.VarChar(255)
-  password  String     @db.VarChar(255)
-  phone     String?    @db.VarChar(20)
+  id        String   @id @default(uuid(7)) @db.Uuid
+  firstName String   @db.VarChar(100)
+  lastName  String?  @db.VarChar(100)
+  /// Chave de login única, independente do provedor: e-mail (LOCAL/GOOGLE/APPLE/FACEBOOK/GITHUB
+  /// quando disponível), telefone (PHONE) ou UID do Firebase (ANONYMOUS, ou fallback quando o
+  /// provedor não retorna e-mail nem telefone).
+  username  String   @unique @db.VarChar(255)
+  email     String?  @unique @db.VarChar(255)
+  password  String?  @db.VarChar(255)
+  phone     String?  @unique @db.VarChar(20)
   avatar       String?       @db.VarChar(1000)
   status       UserStatus    @default(PENDING_EMAIL)
   authProvider AuthProvider  @default(LOCAL)
