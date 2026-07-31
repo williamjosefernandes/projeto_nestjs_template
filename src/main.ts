@@ -29,7 +29,7 @@ async function bootstrap() {
   );
 
   // AllExceptionsFilter e TransformInterceptor são registrados via APP_FILTER/APP_INTERCEPTOR
-  // em AppModule — precisam de DI (I18nService) e não podem mais ser instanciados aqui.
+  // em AppModule.
 
   const config = new DocumentBuilder()
     .setTitle('API MadeCoders')
@@ -39,7 +39,6 @@ async function bootstrap() {
         '',
         'Todas as respostas seguem o envelope `{ success, timestamp, message, messageCode, data?, error?, requestId }`.',
         'Use `messageCode`/`error.code` para lógica de cliente — nunca faça parsing do texto de `message`.',
-        'Idioma resolvido via query `?lang=`, header `x-lang` ou `Accept-Language` (padrão: inglês).',
         'Rotas administrativas de contas exigem o header `x-account-id` com o Membership ativo.',
       ].join('\n'),
     )

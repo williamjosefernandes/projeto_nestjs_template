@@ -8,10 +8,10 @@ import { Reflector } from '@nestjs/core';
 import { Request } from 'express';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
-import { I18nContext, I18nService } from 'nestjs-i18n';
 import { SKIP_TRANSFORM_KEY } from '../decorators/skip-transform.decorator';
 import { SUCCESS_MESSAGE_KEY } from '../decorators/success-message.decorator';
 import { SuccessMessageCode } from '../enum/success-message-code.enum';
+import { getSuccessMessage } from '../messages/messages.util';
 import { generateRequestId } from '../utils/request-id.util';
 import { ApiResponseDto } from '../dto/api-response.dto';
 
@@ -20,10 +20,7 @@ export class TransformInterceptor<T> implements NestInterceptor<
   T,
   ApiResponseDto<T> | T
 > {
-  constructor(
-    private readonly reflector: Reflector,
-    private readonly i18n: I18nService,
-  ) {}
+  constructor(private readonly reflector: Reflector) {}
 
   intercept(
     context: ExecutionContext,
@@ -47,8 +44,7 @@ export class TransformInterceptor<T> implements NestInterceptor<
     const request = context
       .switchToHttp()
       .getRequest<Request & { requestId?: string }>();
-    const lang = I18nContext.current(context)?.lang;
-    const message = this.i18n.t(`success.${messageCode}`, { lang });
+    const message = getSuccessMessage(messageCode);
 
     return next.handle().pipe(
       map((data) => ({

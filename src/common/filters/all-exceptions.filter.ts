@@ -8,9 +8,9 @@ import {
   Logger,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
-import { I18nContext, I18nService } from 'nestjs-i18n';
 import { AppException, AppExceptionBody } from '../exceptions/app.exception';
 import { ErrorCode } from '../enum/error-code.enum';
+import { getErrorMessage } from '../messages/messages.util';
 import { generateRequestId } from '../utils/request-id.util';
 
 interface ResolvedError {
@@ -23,8 +23,6 @@ interface ResolvedError {
 export class AllExceptionsFilter implements ExceptionFilter {
   private readonly logger = new Logger(AllExceptionsFilter.name);
 
-  constructor(private readonly i18n: I18nService) {}
-
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const request = ctx.getRequest<Request & { requestId?: string }>();
@@ -36,8 +34,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
         : HttpStatus.INTERNAL_SERVER_ERROR;
 
     const { code, details } = this.resolveError(exception, status);
-    const lang = I18nContext.current(host)?.lang;
-    const message = this.i18n.t(`errors.${code}`, { lang });
+    const message = getErrorMessage(code);
     const rawMessage =
       exception instanceof Error ? exception.message : String(exception);
 
@@ -58,8 +55,8 @@ export class AllExceptionsFilter implements ExceptionFilter {
    * Toda exceção da aplicação deve ser um `AppException` (só carrega o
    * `code`). Os demais ramos são fallback defensivo para exceções de
    * terceiros (Passport, Prisma, etc.) — a mensagem exibida ao usuário é
-   * sempre resolvida via i18n a partir do `code`, nunca do texto bruto da
-   * exceção (que só é logado, nunca devolvido na resposta).
+   * sempre resolvida via `errors.json` a partir do `code`, nunca do texto
+   * bruto da exceção (que só é logado, nunca devolvido na resposta).
    */
   private resolveError(exception: unknown, status: number): ResolvedError {
     if (exception instanceof AppException) {

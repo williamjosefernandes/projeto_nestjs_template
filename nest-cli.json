@@ -9,7 +9,7 @@
         "outDir": "dist"
       },
       {
-        "include": "i18n/**/*",
+        "include": "common/messages/**/*.json",
         "outDir": "dist"
       }
     ],

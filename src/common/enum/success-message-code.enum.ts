@@ -1,7 +1,7 @@
 /**
  * Códigos de mensagem de sucesso, paralelos a `ErrorCode`. Resolvidos via
- * i18n (`I18nService`) pelo `TransformInterceptor` a partir do
- * `@SuccessMessage(code)` anexado ao handler — nunca escritos como string
+ * `success.json` (`getSuccessMessage`) pelo `TransformInterceptor` a partir
+ * do `@SuccessMessage(code)` anexado ao handler — nunca escritos como string
  * solta em Controllers ou Services.
  */
 export enum SuccessMessageCode {
