@@ -8,7 +8,7 @@ import {
   IsEnum,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { UserStatus } from '@prisma/client';
+import { MembershipStatus } from '@prisma/client';
 
 export class CreateUserAdminDto {
   @ApiProperty({ example: 'Maria' })
@@ -63,8 +63,13 @@ export class UpdateUserAdminDto {
 }
 
 export class UpdateUserStatusDto {
-  @ApiProperty({ enum: UserStatus, example: UserStatus.ACTIVE })
+  @ApiProperty({
+    enum: MembershipStatus,
+    example: MembershipStatus.SUSPENDED,
+    description:
+      'Status do vínculo do usuário com esta conta (não é o status global do usuário — para um usuário bloqueado só nesta conta, use SUSPENDED).',
+  })
   @IsNotEmpty()
-  @IsEnum(UserStatus)
-  status!: UserStatus;
+  @IsEnum(MembershipStatus)
+  status!: MembershipStatus;
 }

@@ -415,8 +415,10 @@ export class UsersService {
     });
     if (!mem)
       throw new NotFoundAppException(ErrorCode.USER_NOT_FOUND_IN_ACCOUNT);
-    // Basic owner protection logic (simplified)
-    if (mem.profile.name === 'OWNER')
+    // `Profile.name` é salvo como 'Owner' (ver seed) — comparar em maiúsculas,
+    // mesma normalização usada em auth.service.ts::loadContext para `profile.code`.
+    // Comparar direto com 'OWNER' nunca batia e deixava essa proteção inoperante.
+    if (mem.profile.name.toUpperCase() === 'OWNER')
       throw new ForbiddenAppException(ErrorCode.CANNOT_DELETE_OWNER);
 
     await this.prisma.membership.update({
@@ -436,13 +438,21 @@ export class UsersService {
     });
     if (!mem)
       throw new NotFoundAppException(ErrorCode.USER_NOT_FOUND_IN_ACCOUNT);
-    if (mem.profile.name === 'OWNER' && dto.status === 'BLOCKED') {
+
+    const isOwner = mem.profile.name.toUpperCase() === 'OWNER';
+    // `MembershipStatus` não tem um valor "BLOCKED" — SUSPENDED é o equivalente
+    // a bloquear o vínculo desta conta; REMOVED equivale ao soft delete (ver
+    // `softDeleteUser`, que usa o mesmo `CANNOT_DELETE_OWNER` para esse caso).
+    if (isOwner && dto.status === 'SUSPENDED') {
       throw new ForbiddenAppException(ErrorCode.CANNOT_BLOCK_OWNER);
+    }
+    if (isOwner && dto.status === 'REMOVED') {
+      throw new ForbiddenAppException(ErrorCode.CANNOT_DELETE_OWNER);
     }
 
     await this.prisma.membership.update({
       where: { id: mem.id },
-      data: { status: dto.status as any },
+      data: { status: dto.status },
     });
   }
 }

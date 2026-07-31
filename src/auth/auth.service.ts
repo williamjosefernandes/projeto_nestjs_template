@@ -101,9 +101,9 @@ export class AuthService {
       }
     }
 
-    // Load Memberships
+    // Load Memberships (só de contas ativas — ver loadContext, mesmo filtro).
     const memberships = await this.prisma.membership.findMany({
-      where: { userId: user.id, status: 'ACTIVE' },
+      where: { userId: user.id, status: 'ACTIVE', account: { active: true } },
     });
 
     let currentMembershipId = memberships.length > 0 ? memberships[0].id : null;
@@ -243,10 +243,14 @@ export class AuthService {
   ) {
     const membership = await this.prisma.membership.findFirst({
       where: { id: newMembershipId, userId, status: 'ACTIVE' },
+      include: { account: true },
     });
 
     if (!membership) {
       throw new ForbiddenAppException(ErrorCode.ACCOUNT_ACCESS_DENIED);
+    }
+    if (!membership.account.active) {
+      throw new ForbiddenAppException(ErrorCode.ACCOUNT_INACTIVE);
     }
 
     await this.prisma.session.update({
@@ -421,9 +425,21 @@ export class AuthService {
       this.bcryptRounds,
     );
 
+    const user = await this.usersService.findById(foundToken.userId);
+    if (!user) throw new BadRequestAppException(ErrorCode.INVALID_RESET_TOKEN);
+
     await this.prisma.user.update({
       where: { id: foundToken.userId },
-      data: { password: hashedPassword },
+      data: {
+        password: hashedPassword,
+        // Definir a senha por um token válido prova posse do e-mail — ativa a
+        // conta quando ela ainda está PENDING_EMAIL (fluxo de convite de admin,
+        // que reaproveita este mesmo endpoint — ver UsersService.createUserAdmin).
+        // Não reativa contas BLOCKED/SUSPENDED por um admin (só PENDING_EMAIL).
+        ...(user.status === 'PENDING_EMAIL'
+          ? { status: 'ACTIVE', emailVerifiedAt: user.emailVerifiedAt ?? new Date() }
+          : {}),
+      },
     });
 
     await this.prisma.token.delete({
@@ -569,8 +585,11 @@ export class AuthService {
       authProvider: user.authProvider,
     };
 
+    // Contas inativas nunca entram em `accounts[]`/`currentAccount` — evita
+    // que login/refresh/switch-account escopem uma sessão a uma conta
+    // desativada (só endpoints com `MembershipGuard` checavam isso antes).
     const allMemberships = await this.prisma.membership.findMany({
-      where: { userId: user.id, status: 'ACTIVE' },
+      where: { userId: user.id, status: 'ACTIVE', account: { active: true } },
       include: {
         account: true,
         profile: true,
@@ -578,7 +597,9 @@ export class AuthService {
     });
 
     const accounts = allMemberships.map((m) => ({
-      id: m.account.id,
+      // `id` é o id do Membership (não da Account) — é o valor que
+      // `POST /auth/switch-account` espera em `SwitchAccountDto.membershipId`.
+      id: m.id,
       name: m.account.name,
       type: m.account.type,
       logo: (m.account as any).logo || m.account.avatar,

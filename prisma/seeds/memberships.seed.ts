@@ -44,7 +44,12 @@ export async function seedMemberships(
       );
     }
 
-    const createdMembership = await prisma.membership.upsert({
+    // Por padrão ACTIVE; vínculos de cenário (convite pendente, removido,
+    // suspenso...) declaram `status` explicitamente em `data/memberships.ts`
+    // — ver `prisma/SEED.md`.
+    const status = membership.status ?? MembershipStatus.ACTIVE;
+
+    await prisma.membership.upsert({
       where: {
         accountId_userId: {
           accountId: account.id,
@@ -53,13 +58,13 @@ export async function seedMemberships(
       },
       update: {
         profileId: profile.id,
-        status: MembershipStatus.ACTIVE,
+        status,
       },
       create: {
         accountId: account.id,
         userId: user.id,
         profileId: profile.id,
-        status: MembershipStatus.ACTIVE,
+        status,
       },
     });
 

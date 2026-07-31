@@ -94,6 +94,8 @@ export class AllExceptionsFilter implements ExceptionFilter {
         return ErrorCode.CONFLICT;
       case HttpStatus.BAD_REQUEST:
         return ErrorCode.BAD_REQUEST;
+      case HttpStatus.TOO_MANY_REQUESTS:
+        return ErrorCode.RATE_LIMITED;
       default:
         return ErrorCode.INTERNAL_SERVER_ERROR;
     }

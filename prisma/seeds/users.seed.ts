@@ -10,6 +10,12 @@ export async function seedUsers(
   const passwordHash = await bcrypt.hash('password123', 10);
 
   for (const user of systemUsers) {
+    // Por padrão ACTIVE + e-mail verificado; usuários de cenário (bloqueado,
+    // suspenso, pendente de verificação...) declaram `status`/`emailVerified`
+    // explicitamente em `data/users.ts` — ver `prisma/SEED.md`.
+    const status = user.status ?? UserStatus.ACTIVE;
+    const emailVerifiedAt = user.emailVerified === false ? null : new Date();
+
     await prisma.user.upsert({
       where: {
         email: user.email,
@@ -19,8 +25,8 @@ export async function seedUsers(
         lastName: user.lastName,
         username: user.email,
         password: passwordHash,
-        status: UserStatus.ACTIVE,
-        emailVerifiedAt: new Date(),
+        status,
+        emailVerifiedAt,
         authProvider: 'LOCAL',
       },
       create: {
@@ -29,9 +35,9 @@ export async function seedUsers(
         username: user.email,
         email: user.email,
         password: passwordHash,
-        status: UserStatus.ACTIVE,
+        status,
         authProvider: 'LOCAL',
-        emailVerifiedAt: new Date(),
+        emailVerifiedAt,
       },
     });
   }

@@ -5,6 +5,7 @@
   "NOT_FOUND": "Resource not found.",
   "CONFLICT": "Conflict while processing the request.",
   "EMAIL_DELIVERY_FAILED": "The email could not be sent.",
+  "RATE_LIMITED": "Too many requests. Please try again later.",
 
   "INVALID_CREDENTIALS": "Invalid credentials.",
   "UNVERIFIED_EMAIL": "Email not verified.",

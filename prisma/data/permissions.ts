@@ -1,139 +1,81 @@
 import { TypePermission } from '@prisma/client';
 
+/**
+ * Catálogo de permissões — cada `code` aqui é uma string usada literalmente
+ * pelo frontend (`projeto_vite_template`) via `usePermission`/`PermissionGate`
+ * (bloqueio de blocos) e `useVisibleMenu` (filtro da sidebar, que compara
+ * `item.requiredPermission` contra `useAuthStore.permissions`).
+ *
+ * IMPORTANTE — todos os códigos abaixo são `TypePermission.API`, mesmo os que
+ * representam item de menu ou bloco/widget de tela. Isso é proposital, não um
+ * erro: `AuthorizationService.calculatePermissions` separa o resultado em três
+ * arrays (`permissions`/`menus`/`components`) conforme `TypePermission`
+ * (API/MENU/COMPONENT), mas o frontend hoje só lê `permissions[]` — tanto para
+ * decidir o que aparece na sidebar (`useVisibleMenu`) quanto para os blocos
+ * (`usePermission`/`PermissionGate`). Os primitivos `useMenu`/`MenuGuard` e
+ * `useComponent`/`ComponentGuard` (que leriam `menus[]`/`components[]`) existem
+ * no frontend mas não têm nenhum consumidor real ainda — usar `MENU`/`COMPONENT`
+ * aqui faria esses códigos "sumirem" de `permissions[]` e quebraria a sidebar e
+ * os widgets. Se `menus[]`/`components[]` ganharem um consumidor real no
+ * futuro, popule-os com códigos adicionais — não reclassifique os existentes.
+ *
+ * Fonte da verdade dos códigos: `src/lib/menu-config.ts` (menu),
+ * `src/modules/dashboard/dashboard.permissions.ts` (widgets do Dashboard) e
+ * `src/users/users.controller.ts` (CRUD de usuários, também validado no
+ * próprio backend via `@Permissions(...)` + `PermissionGuard`).
+ */
 export const permissions = [
-  // Dashboard - Blocos Gerais
-  { group: 'Dashboard', code: 'menu.dashboard', name: 'Menu Dashboard', description: 'Acessar menu dashboard.', type: TypePermission.MENU },
-  { group: 'Dashboard', code: 'dashboard.indicadores.visualizar', name: 'Indicadores', description: 'Visualizar indicadores da dashboard', type: TypePermission.COMPONENT },
-  { group: 'Dashboard', code: 'dashboard.desempenho.visualizar', name: 'Desempenho', description: 'Visualizar desempenho', type: TypePermission.COMPONENT },
-  { group: 'Dashboard', code: 'dashboard.atividades.visualizar', name: 'Atividades Recentes', description: 'Visualizar atividades recentes', type: TypePermission.COMPONENT },
-  { group: 'Dashboard', code: 'dashboard.agenda.visualizar', name: 'Agenda de Hoje', description: 'Visualizar agenda', type: TypePermission.COMPONENT },
-  { group: 'Dashboard', code: 'dashboard.notificacoes.visualizar', name: 'Notificações', description: 'Visualizar notificações', type: TypePermission.COMPONENT },
-  { group: 'Dashboard', code: 'dashboard.top_produtos.visualizar', name: 'Top Produtos', description: 'Visualizar top produtos', type: TypePermission.COMPONENT },
-  { group: 'Dashboard', code: 'dashboard.financeiro.visualizar', name: 'Resumo Financeiro', description: 'Visualizar resumo financeiro', type: TypePermission.COMPONENT },
+  // ── Navegação (grupo "navegacao" de menu-config.ts, um code por item) ──
+  { group: 'Navegação', code: 'nav.dashboard', name: 'Menu Dashboard', description: 'Exibir o item "Dashboard" na sidebar.', type: TypePermission.API },
+  { group: 'Navegação', code: 'nav.visao-geral', name: 'Menu Visão Geral', description: 'Exibir o item "Visão Geral" na sidebar.', type: TypePermission.API },
+  { group: 'Navegação', code: 'nav.relatorios', name: 'Menu Relatórios', description: 'Exibir o item "Relatórios" na sidebar.', type: TypePermission.API },
+  { group: 'Navegação', code: 'nav.atividades', name: 'Menu Atividades', description: 'Exibir o item "Atividades" na sidebar.', type: TypePermission.API },
+  { group: 'Navegação', code: 'nav.calendario', name: 'Menu Calendário', description: 'Exibir o item "Calendário" na sidebar.', type: TypePermission.API },
 
-  // Dashboard - StatCards Individuais
-  { group: 'Dashboard', code: 'dashboard.indicadores.receita', name: 'Indicador Receita', description: 'Visualizar indicador de receita', type: TypePermission.COMPONENT },
-  { group: 'Dashboard', code: 'dashboard.indicadores.novos_clientes', name: 'Indicador Clientes', description: 'Visualizar indicador novos clientes', type: TypePermission.COMPONENT },
-  { group: 'Dashboard', code: 'dashboard.indicadores.aulas_agendadas', name: 'Indicador Aulas', description: 'Visualizar indicador aulas agendadas', type: TypePermission.COMPONENT },
-  { group: 'Dashboard', code: 'dashboard.indicadores.conversoes', name: 'Indicador Conversões', description: 'Visualizar indicador de conversões', type: TypePermission.COMPONENT },
+  // ── Dashboard — seções/widgets (DASHBOARD_PERMISSIONS) ──
+  { group: 'Dashboard', code: 'dashboard.indicadores.visualizar', name: 'Indicadores', description: 'Visualizar a seção de indicadores (StatCards) do Dashboard.', type: TypePermission.API },
+  { group: 'Dashboard', code: 'dashboard.desempenho.visualizar', name: 'Desempenho', description: 'Visualizar o card de desempenho do Dashboard.', type: TypePermission.API },
+  { group: 'Dashboard', code: 'dashboard.atividades.visualizar', name: 'Atividades Recentes', description: 'Visualizar o card de atividades recentes do Dashboard.', type: TypePermission.API },
+  { group: 'Dashboard', code: 'dashboard.agenda.visualizar', name: 'Agenda de Hoje', description: 'Visualizar o card de agenda do Dashboard.', type: TypePermission.API },
+  { group: 'Dashboard', code: 'dashboard.notificacoes.visualizar', name: 'Notificações', description: 'Visualizar o card de notificações do Dashboard.', type: TypePermission.API },
+  { group: 'Dashboard', code: 'dashboard.top_produtos.visualizar', name: 'Top Produtos', description: 'Visualizar a tabela de top produtos do Dashboard.', type: TypePermission.API },
+  { group: 'Dashboard', code: 'dashboard.financeiro.visualizar', name: 'Resumo Financeiro', description: 'Visualizar o card de resumo financeiro do Dashboard.', type: TypePermission.API },
 
-  // Users
-  {
-    group: 'Users',
-    code: 'menu.users',
-    name: 'Menu Usuários',
-    description: 'Acessar tela de usuários.',
-    type: TypePermission.MENU,
-  },
-  {
-    group: 'Users',
-    code: 'users.read',
-    name: 'Visualizar Usuários',
-    description: 'Permite listar usuários via API.',
-    type: TypePermission.API,
-  },
-  {
-    group: 'Users',
-    code: 'users.create',
-    name: 'Criar Usuários',
-    description: 'Permite criar usuários.',
-    type: TypePermission.API,
-  },
-  {
-    group: 'Users',
-    code: 'users.update',
-    name: 'Editar Usuários',
-    description: 'Permite editar usuários.',
-    type: TypePermission.API,
-  },
-  {
-    group: 'Users',
-    code: 'users.delete',
-    name: 'Excluir Usuários',
-    description: 'Permite excluir usuários.',
-    type: TypePermission.API,
-  },
+  // ── Dashboard — StatCards individuais (STAT_CARD_PERMISSIONS) ──
+  { group: 'Dashboard', code: 'dashboard.indicadores.receita', name: 'Indicador: Receita do mês', description: 'Visualizar o StatCard de receita do mês.', type: TypePermission.API },
+  { group: 'Dashboard', code: 'dashboard.indicadores.novos_clientes', name: 'Indicador: Novos clientes', description: 'Visualizar o StatCard de novos clientes.', type: TypePermission.API },
+  { group: 'Dashboard', code: 'dashboard.indicadores.aulas_agendadas', name: 'Indicador: Aulas agendadas', description: 'Visualizar o StatCard de aulas agendadas.', type: TypePermission.API },
+  { group: 'Dashboard', code: 'dashboard.indicadores.conversoes', name: 'Indicador: Conversões', description: 'Visualizar o StatCard de conversões.', type: TypePermission.API },
 
-  // Profiles
-  {
-    group: 'Profiles',
-    code: 'menu.profiles',
-    name: 'Menu Perfis',
-    description: 'Acessar tela de perfis.',
-    type: TypePermission.MENU,
-  },
-  {
-    group: 'Profiles',
-    code: 'profiles.read',
-    name: 'Visualizar Perfis',
-    description: 'Permite visualizar perfis.',
-    type: TypePermission.API,
-  },
-  {
-    group: 'Profiles',
-    code: 'profiles.create',
-    name: 'Criar Perfis',
-    description: 'Permite criar perfis.',
-    type: TypePermission.API,
-  },
-  {
-    group: 'Profiles',
-    code: 'profiles.update',
-    name: 'Editar Perfis',
-    description: 'Permite editar perfis.',
-    type: TypePermission.API,
-  },
-  {
-    group: 'Profiles',
-    code: 'profiles.delete',
-    name: 'Excluir Perfis',
-    description: 'Permite excluir perfis.',
-    type: TypePermission.API,
-  },
+  // ── Cadastros (grupo "cadastros" de menu-config.ts) ──
+  { group: 'Cadastros', code: 'cadastros.alunos', name: 'Menu Alunos', description: 'Exibir o item "Alunos" na sidebar.', type: TypePermission.API },
+  { group: 'Cadastros', code: 'cadastros.instrutores', name: 'Menu Instrutores', description: 'Exibir o item "Instrutores" na sidebar.', type: TypePermission.API },
+  { group: 'Cadastros', code: 'cadastros.veiculos', name: 'Menu Veículos', description: 'Exibir o item "Veículos" na sidebar.', type: TypePermission.API },
 
-  // Company
-  {
-    group: 'Company',
-    code: 'menu.company',
-    name: 'Menu Empresa',
-    description: 'Acessar configurações da empresa.',
-    type: TypePermission.MENU,
-  },
-  {
-    group: 'Company',
-    code: 'company.read',
-    name: 'Visualizar Empresa',
-    description: 'Permite visualizar dados da empresa.',
-    type: TypePermission.API,
-  },
-  {
-    group: 'Company',
-    code: 'company.update',
-    name: 'Editar Empresa',
-    description: 'Permite editar dados da empresa.',
-    type: TypePermission.API,
-  },
+  // ── Financeiro (grupo "financeiro" de menu-config.ts) ──
+  { group: 'Financeiro', code: 'financeiro.receitas', name: 'Menu Receitas', description: 'Exibir o item "Receitas" na sidebar.', type: TypePermission.API },
+  { group: 'Financeiro', code: 'financeiro.despesas', name: 'Menu Despesas', description: 'Exibir o item "Despesas" na sidebar.', type: TypePermission.API },
+  { group: 'Financeiro', code: 'financeiro.faturas', name: 'Menu Faturas', description: 'Exibir o item "Faturas" na sidebar.', type: TypePermission.API },
 
-  // Settings
-  {
-    group: 'Settings',
-    code: 'menu.settings',
-    name: 'Menu Configurações',
-    description: 'Acessar tela de configurações.',
-    type: TypePermission.MENU,
-  },
-  {
-    group: 'Settings',
-    code: 'settings.read',
-    name: 'Visualizar Configurações',
-    description: 'Permite visualizar configurações.',
-    type: TypePermission.API,
-  },
-  {
-    group: 'Settings',
-    code: 'settings.update',
-    name: 'Editar Configurações',
-    description: 'Permite alterar configurações.',
-    type: TypePermission.API,
-  },
+  // ── Comunicação (grupo "comunicacao" de menu-config.ts) ──
+  { group: 'Comunicação', code: 'comunicacao.mensagens', name: 'Menu Mensagens', description: 'Exibir o item "Mensagens" na sidebar.', type: TypePermission.API },
+  { group: 'Comunicação', code: 'comunicacao.notificacoes', name: 'Menu Notificações', description: 'Exibir o item "Notificações" (Comunicação) na sidebar.', type: TypePermission.API },
+
+  // ── Operações (grupo "operacoes" de menu-config.ts) ──
+  { group: 'Operações', code: 'operacoes.aulas', name: 'Menu Aulas', description: 'Exibir o item "Aulas" na sidebar.', type: TypePermission.API },
+  { group: 'Operações', code: 'operacoes.frota', name: 'Menu Frota', description: 'Exibir o item "Frota" na sidebar.', type: TypePermission.API },
+
+  // ── Marketing (grupo "marketing" de menu-config.ts) ──
+  { group: 'Marketing', code: 'marketing.campanhas', name: 'Menu Campanhas', description: 'Exibir o item "Campanhas" na sidebar.', type: TypePermission.API },
+  { group: 'Marketing', code: 'marketing.promocoes', name: 'Menu Promoções', description: 'Exibir o item "Promoções" na sidebar.', type: TypePermission.API },
+
+  // ── Configurações (grupo "configuracoes" de menu-config.ts) ──
+  { group: 'Configurações', code: 'configuracoes.geral', name: 'Menu Configurações Gerais', description: 'Exibir o item "Geral" na sidebar.', type: TypePermission.API },
+  { group: 'Configurações', code: 'configuracoes.usuarios', name: 'Menu Usuários (Configurações)', description: 'Exibir o item "Usuários" na sidebar — abre a tela de administração de usuários.', type: TypePermission.API },
+
+  // ── Usuários — CRUD administrativo (também validado por @Permissions() no UsersController) ──
+  { group: 'Usuários', code: 'users.read', name: 'Visualizar Usuários', description: 'Listar/visualizar usuários da conta via API.', type: TypePermission.API },
+  { group: 'Usuários', code: 'users.create', name: 'Criar Usuários', description: 'Convidar/criar usuários na conta via API.', type: TypePermission.API },
+  { group: 'Usuários', code: 'users.update', name: 'Editar Usuários', description: 'Editar dados/status de usuários da conta via API.', type: TypePermission.API },
+  { group: 'Usuários', code: 'users.delete', name: 'Excluir Usuários', description: 'Remover (soft delete) usuários da conta via API.', type: TypePermission.API },
 ];

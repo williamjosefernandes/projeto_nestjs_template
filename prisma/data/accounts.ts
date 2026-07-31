@@ -7,6 +7,8 @@ export const systemAccounts = [
   { code: 'COMPANY1', type: AccountType.COMPANY, name: 'Acme Corp', slug: 'acme-corp', active: true },
   { code: 'COMPANY2', type: AccountType.COMPANY, name: 'Global Tech', slug: 'global-tech', active: true },
   { code: 'COMPANY3', type: AccountType.COMPANY, name: 'Stark Industries', slug: 'stark-industries', active: true },
+  // Conta INATIVA de propósito — cenário de teste de ACCOUNT_INACTIVE (ver prisma/SEED.md).
+  { code: 'COMPANY4', type: AccountType.COMPANY, name: 'Wayne Enterprises', slug: 'wayne-enterprises', active: false },
 
   // Clientes Mock
   { code: 'CUST1', type: AccountType.CUSTOMER, name: 'João Silva', slug: 'joao-silva', active: true },

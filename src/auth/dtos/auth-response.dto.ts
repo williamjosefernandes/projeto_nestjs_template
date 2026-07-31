@@ -95,7 +95,10 @@ export class CurrentAccountDto {
 }
 
 export class AccountListItemDto {
-  @ApiProperty()
+  @ApiProperty({
+    description:
+      'ID do Membership (vínculo usuário-conta) — use este valor em `SwitchAccountDto.membershipId`, não o ID da conta.',
+  })
   id!: string;
 
   @ApiProperty()

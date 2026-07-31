@@ -3,4 +3,5 @@ export const companies: { accountSlug: string; corporateName: string; tradeName:
   { accountSlug: 'acme-corp', corporateName: 'Acme Corporation S.A.', tradeName: 'Acme Corp', document: '11.111.111/0001-11', email: 'contact@acmecorp.com', phone: '(11) 4444-4444', whatsapp: '(11) 98888-8888', website: 'https://acmecorp.com', logo: null },
   { accountSlug: 'global-tech', corporateName: 'Global Tech Enterprises', tradeName: 'Global Tech', document: '22.222.222/0001-22', email: 'info@globaltech.com', phone: '(21) 5555-5555', whatsapp: '(21) 97777-7777', website: 'https://globaltech.com', logo: null },
   { accountSlug: 'stark-industries', corporateName: 'Stark Industries LLC', tradeName: 'Stark Industries', document: '33.333.333/0001-33', email: 'ceo@stark.com', phone: '(31) 6666-6666', whatsapp: '(31) 96666-6666', website: 'https://starkindustries.com', logo: null },
+  { accountSlug: 'wayne-enterprises', corporateName: 'Wayne Enterprises Inc.', tradeName: 'Wayne Enterprises', document: '44.444.444/0001-44', email: 'bruce@wayne.com', phone: '(41) 7777-7777', whatsapp: '(41) 95555-5555', website: 'https://wayne-enterprises.example', logo: null },
 ];
