@@ -20,6 +20,13 @@ export async function seedProfilePermissions(
       continue;
     }
 
+    // Limpa as permissões antigas do perfil para garantir que refletem exatamente a seed atual
+    await prisma.profilePermission.deleteMany({
+      where: {
+        profileId: profile.id,
+      },
+    });
+
     for (const permissionCode of profilePermission.permissions) {
       // Owner recebe todas as permissões
       if (permissionCode === '*') {

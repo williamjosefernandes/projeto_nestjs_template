@@ -11,6 +11,6 @@ export interface ISecurityMembershipService {
     account: { id: string; name: string; isActive: boolean };
     profile: { id: string; name: string; isActive: boolean };
   } | null>;
-  getProfilePermissions(membershipId: string): Promise<{ code: string }[]>;
-  getPermissionOverrides(membershipId: string): Promise<{ code: string; isDenied: boolean }[]>;
+  getProfilePermissions(membershipId: string): Promise<{ code: string; type: string }[]>;
+  getPermissionOverrides(membershipId: string): Promise<{ code: string; type: string; isDenied: boolean }[]>;
 }

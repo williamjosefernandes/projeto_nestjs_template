@@ -434,6 +434,12 @@ model Profile {
   @@map("profiles")
 }
 
+enum TypePermission {
+  MENU
+  COMPONENT
+  API
+}
+
 model Permission {
   id String @id @default(uuid(7)) @db.Uuid
 
@@ -444,6 +450,8 @@ model Permission {
   module String? @db.VarChar(100)
 
   description String? @db.VarChar(500)
+
+  type TypePermission @default(API)
 
   createdAt DateTime @default(now())
 

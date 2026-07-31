@@ -7,20 +7,26 @@ export const profilePermissions = [
   {
     profile: 'Administrador',
     permissions: [
-      'dashboard.view',
+      'menu.dashboard',
+      'dashboard.finances.chart',
+      'dashboard.metrics.view',
 
+      'menu.users',
       'users.read',
       'users.create',
       'users.update',
       'users.delete',
 
+      'menu.profiles',
       'profiles.read',
       'profiles.create',
       'profiles.update',
 
+      'menu.company',
       'company.read',
       'company.update',
 
+      'menu.settings',
       'settings.read',
       'settings.update',
     ],
@@ -29,11 +35,15 @@ export const profilePermissions = [
   {
     profile: 'Gerente',
     permissions: [
-      'dashboard.view',
+      'menu.dashboard',
+      'dashboard.metrics.view',
+      'dashboard.finances.chart',
 
+      'menu.users',
       'users.read',
       'users.update',
 
+      'menu.company',
       'company.read',
     ],
   },
@@ -41,7 +51,8 @@ export const profilePermissions = [
   {
     profile: 'Usuário',
     permissions: [
-      'dashboard.view',
+      'menu.dashboard',
+      'dashboard.metrics.view',
     ],
   },
 ];

@@ -28,10 +28,12 @@ export class PermissionGuard implements CanActivate {
        throw new PermissionDeniedException();
     }
 
-    const userPermissions = await this.authService.calculatePermissions(request.membership.id);
-    request.permissions = userPermissions;
+    const userAccess = await this.authService.calculatePermissions(request.membership.id);
+    request.permissions = userAccess.permissions;
+    request.menus = userAccess.menus;
+    request.components = userAccess.components;
 
-    const hasPermission = requiredPermissions.every((perm) => userPermissions.includes(perm));
+    const hasPermission = requiredPermissions.every((perm) => userAccess.permissions.includes(perm));
 
     if (!hasPermission) {
       throw new PermissionDeniedException();

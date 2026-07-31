@@ -15,6 +15,7 @@ export async function seedPermissions(
         module: permission.module,
         name: permission.name,
         description: permission.description,
+        type: permission.type,
       },
       create: permission,
     });

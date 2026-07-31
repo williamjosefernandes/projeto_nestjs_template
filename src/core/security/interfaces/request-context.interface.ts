@@ -37,4 +37,6 @@ export interface AuthenticatedRequest extends Request {
   membership?: MembershipContext;
   profile?: ProfileContext;
   permissions?: string[];
+  menus?: string[];
+  components?: string[];
 }

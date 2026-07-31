@@ -39,7 +39,7 @@ export class SecurityMembershipService implements ISecurityMembershipService {
     };
   }
 
-  async getProfilePermissions(membershipId: string): Promise<{ code: string }[]> {
+  async getProfilePermissions(membershipId: string): Promise<{ code: string; type: string }[]> {
     const membership = await this.prisma.membership.findUnique({
       where: { id: membershipId },
       include: {
@@ -56,11 +56,12 @@ export class SecurityMembershipService implements ISecurityMembershipService {
     if (!membership || !membership.profile) return [];
 
     return membership.profile.permissions.map(pp => ({
-      code: pp.permission.code
+      code: pp.permission.code,
+      type: pp.permission.type as string
     }));
   }
 
-  async getPermissionOverrides(membershipId: string): Promise<{ code: string; isDenied: boolean }[]> {
+  async getPermissionOverrides(membershipId: string): Promise<{ code: string; type: string; isDenied: boolean }[]> {
     const membership = await this.prisma.membership.findUnique({
       where: { id: membershipId },
       include: {
@@ -78,6 +79,7 @@ export class SecurityMembershipService implements ISecurityMembershipService {
 
     return membership.profile.overrides.map(po => ({
       code: po.permission.code,
+      type: po.permission.type as string,
       isDenied: po.effect === 'DENY'
     }));
   }

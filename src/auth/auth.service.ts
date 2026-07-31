@@ -399,22 +399,29 @@ export class AuthService {
 
     if (!membership) return { user: userDto };
 
-    const permSet = new Set<string>();
+    const permMap = new Map<string, string>();
     
     membership.profile.permissions.forEach(p => {
-      permSet.add(p.permission.code);
+      permMap.set(p.permission.code, p.permission.type);
     });
 
     membership.profile.overrides.forEach(o => {
       if (o.effect === 'ALLOW') {
-        permSet.add(o.permission.code);
+        permMap.set(o.permission.code, o.permission.type);
       } else {
-        permSet.delete(o.permission.code);
+        permMap.delete(o.permission.code);
       }
     });
 
-    const permissions = Array.from(permSet);
-    const menus = Array.from(new Set(permissions.map(p => p.split(':')[0])));
+    const permissions: string[] = [];
+    const menus: string[] = [];
+    const components: string[] = [];
+
+    Array.from(permMap.entries()).forEach(([code, type]) => {
+      if (type === 'API') permissions.push(code);
+      else if (type === 'MENU') menus.push(code);
+      else if (type === 'COMPONENT') components.push(code);
+    });
 
     return {
       user: userDto,
@@ -434,7 +441,7 @@ export class AuthService {
       },
       permissions,
       menus,
-      components: [],
+      components,
     };
   }
 

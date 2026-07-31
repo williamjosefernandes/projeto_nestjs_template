@@ -44,6 +44,9 @@ CREATE TYPE "NotificationChannel" AS ENUM ('IN_APP', 'EMAIL');
 CREATE TYPE "Gender" AS ENUM ('MALE', 'FEMALE', 'OTHER', 'NOT_INFORMED');
 
 -- CreateEnum
+CREATE TYPE "TypePermission" AS ENUM ('MENU', 'COMPONENT', 'API');
+
+-- CreateEnum
 CREATE TYPE "TicketStatus" AS ENUM ('OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED');
 
 -- CreateEnum
@@ -197,6 +200,7 @@ CREATE TABLE "permissions" (
     "name" VARCHAR(150) NOT NULL,
     "module" VARCHAR(100),
     "description" VARCHAR(500),
+    "type" "TypePermission" NOT NULL DEFAULT 'API',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 

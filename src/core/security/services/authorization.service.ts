@@ -10,9 +10,9 @@ export class AuthorizationService {
     @Inject('I_SECURITY_MEMBERSHIP_SERVICE') private readonly membershipService: ISecurityMembershipService
   ) {}
 
-  async calculatePermissions(membershipId: string): Promise<string[]> {
+  async calculatePermissions(membershipId: string): Promise<{ permissions: string[], menus: string[], components: string[] }> {
     const cacheKey = `permissions:membership:${membershipId}`;
-    const cachedPermissions = await this.cacheManager.get<string[]>(cacheKey);
+    const cachedPermissions = await this.cacheManager.get<{ permissions: string[], menus: string[], components: string[] }>(cacheKey);
     
     if (cachedPermissions) {
       return cachedPermissions;
@@ -21,17 +21,31 @@ export class AuthorizationService {
     const basePermissions = await this.membershipService.getProfilePermissions(membershipId);
     const overrides = await this.membershipService.getPermissionOverrides(membershipId);
 
-    const finalPermissions = new Set<string>(basePermissions.map(p => p.code));
+    const permMap = new Map<string, string>();
 
-    for (const override of overrides) {
+    basePermissions.forEach(p => {
+      permMap.set(p.code, p.type);
+    });
+
+    overrides.forEach(override => {
       if (override.isDenied) {
-        finalPermissions.delete(override.code);
+        permMap.delete(override.code);
       } else {
-        finalPermissions.add(override.code);
+        permMap.set(override.code, override.type);
       }
-    }
+    });
 
-    const resolvedPermissions = Array.from(finalPermissions);
+    const permissions: string[] = [];
+    const menus: string[] = [];
+    const components: string[] = [];
+
+    Array.from(permMap.entries()).forEach(([code, type]) => {
+      if (type === 'API') permissions.push(code);
+      else if (type === 'MENU') menus.push(code);
+      else if (type === 'COMPONENT') components.push(code);
+    });
+
+    const resolvedPermissions = { permissions, menus, components };
     
     await this.cacheManager.set(cacheKey, resolvedPermissions, 3600 * 1000); // 1 hora
     
