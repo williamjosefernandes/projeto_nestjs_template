@@ -8,6 +8,7 @@ import { seedPermissions } from './seeds/permissions.seed';
 import { seedAccounts } from './seeds/accounts.seed';
 import { seedProfiles } from './seeds/profiles.seed';
 import { seedProfilePermissions } from './seeds/profile-permissions.seed';
+import { seedPermissionOverrides } from './seeds/permission-overrides.seed';
 import { seedCompanies } from './seeds/companies.seed';
 import { seedCustomers } from './seeds/customers.seed';
 import { seedUsers } from './seeds/users.seed';
@@ -29,12 +30,11 @@ async function main() {
   await seedPermissionGroups(prisma);
   await seedPermissions(prisma);
 
-  // 2. Accounts Base
+  // 3. Accounts & Profiles (Core)
   await seedAccounts(prisma);
-
-  // 3. RBAC Profiles
   await seedProfiles(prisma);
   await seedProfilePermissions(prisma);
+  await seedPermissionOverrides(prisma);
 
   // 4. Account Details (Company / Customer)
   await seedCompanies(prisma);
