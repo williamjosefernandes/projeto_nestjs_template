@@ -1,6 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsEmail, IsNotEmpty, Length } from 'class-validator';
-import { UserResponseDto } from './auth-response.dto';
 
 export class VerifyEmailDto {
   @ApiProperty()
@@ -17,27 +16,4 @@ export class ResendEmailVerificationDto {
   @ApiProperty()
   @IsEmail()
   email: string;
-}
-
-export class VerifyEmailResponseDto {
-  @ApiProperty()
-  verified: boolean;
-
-  @ApiProperty()
-  accessToken: string;
-
-  @ApiProperty()
-  refreshToken: string;
-
-  @ApiProperty()
-  expiresIn: number;
-
-  @ApiProperty()
-  refreshExpiresIn: number;
-
-  @ApiProperty()
-  tokenType: string;
-
-  @ApiProperty()
-  user: UserResponseDto;
 }

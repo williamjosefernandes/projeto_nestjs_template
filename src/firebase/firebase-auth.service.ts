@@ -1,6 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import * as admin from 'firebase-admin';
-import { firebaseApp } from './firebase.service';
+import { FIREBASE_APP } from './firebase.constants';
 
 export interface FirebaseIdentity {
   uid: string;
@@ -15,9 +15,10 @@ export interface FirebaseIdentity {
 
 @Injectable()
 export class FirebaseAuthService {
+  private readonly logger = new Logger(FirebaseAuthService.name);
   private auth: admin.auth.Auth;
 
-  constructor() {
+  constructor(@Inject(FIREBASE_APP) firebaseApp: admin.app.App) {
     this.auth = firebaseApp.auth();
   }
 
@@ -36,11 +37,32 @@ export class FirebaseAuthService {
         phoneNumber: decodedToken.phone_number ?? null,
         displayName: (decodedToken as any).name ?? null,
         photoURL: (decodedToken as any).picture ?? null,
-        signInProvider: (decodedToken.firebase as any)?.sign_in_provider ?? null,
+        signInProvider:
+          (decodedToken.firebase as any)?.sign_in_provider ?? null,
       };
     } catch (error) {
-      console.error('Error verifying ID token:', error);
-      return null;
+      const code = this.extractFirebaseErrorCode(error);
+      if (code?.startsWith('auth/')) {
+        this.logger.warn(`ID token do Firebase inválido/expirado: ${code}`);
+        return null;
+      }
+      this.logger.error(
+        'Erro inesperado ao verificar ID token do Firebase',
+        error instanceof Error ? error.stack : String(error),
+      );
+      throw error;
     }
+  }
+
+  private extractFirebaseErrorCode(error: unknown): string | undefined {
+    if (
+      error &&
+      typeof error === 'object' &&
+      'code' in error &&
+      typeof (error as { code: unknown }).code === 'string'
+    ) {
+      return (error as { code: string }).code;
+    }
+    return undefined;
   }
 }

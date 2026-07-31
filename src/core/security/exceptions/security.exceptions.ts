@@ -1,5 +1,8 @@
 import { ErrorCode } from '../../../common/enum/error-code.enum';
-import { UnauthorizedAppException, ForbiddenAppException } from '../../../common/exceptions/app.exception';
+import {
+  UnauthorizedAppException,
+  ForbiddenAppException,
+} from '../../../common/exceptions/app.exception';
 
 export class InvalidTokenException extends UnauthorizedAppException {
   constructor() {

@@ -1,11 +1,20 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../database/prisma.service';
-import { User, Prisma, UserStatus } from '@prisma/client';
+import { EmailService } from '../email/email.service';
+import { AuthorizationService } from '../core/security/services/authorization.service';
+import { Prisma, TokenType } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
+import { v4 as uuidv4 } from 'uuid';
+import { addHours } from 'date-fns';
 import { UpdateProfileDto } from './dtos/update-profile.dto';
 import { ChangePasswordDto } from './dtos/change-password.dto';
 import { UpdatePreferencesDto } from './dtos/update-preferences.dto';
-import { CreateUserAdminDto, UpdateUserAdminDto, UpdateUserStatusDto } from './dtos/admin-users.dto';
+import {
+  CreateUserAdminDto,
+  UpdateUserAdminDto,
+  UpdateUserStatusDto,
+} from './dtos/admin-users.dto';
 import { ErrorCode } from '../common/enum/error-code.enum';
 import {
   NotFoundAppException,
@@ -13,10 +22,41 @@ import {
   ForbiddenAppException,
   ConflictAppException,
 } from '../common/exceptions/app.exception';
+import { UserMeResponseDto } from './dtos/user-responses.dto';
+import { ListUsersQueryDto } from './dtos/list-users-query.dto';
+import { PageMetaDto } from '../common/pagination/pagination-info-response.dto';
+import { SessionResponseDto } from '../auth/dtos/session.dto';
+
+/** Nunca inclui `password` — único `select` usado para os endpoints `me/*`. */
+const USER_ME_SELECT = {
+  id: true,
+  firstName: true,
+  lastName: true,
+  email: true,
+  phone: true,
+  avatar: true,
+  status: true,
+  authProvider: true,
+  emailVerifiedAt: true,
+  lastLoginAt: true,
+  createdAt: true,
+} satisfies Prisma.UserSelect;
+
+type UserMeRow = Prisma.UserGetPayload<{ select: typeof USER_ME_SELECT }>;
+
+function toMeResponse(user: UserMeRow): UserMeResponseDto {
+  const { emailVerifiedAt, ...rest } = user;
+  return { ...rest, emailVerified: !!emailVerifiedAt };
+}
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly emailService: EmailService,
+    private readonly configService: ConfigService,
+    private readonly authorizationService: AuthorizationService,
+  ) {}
 
   // ============================================================================
   // Basic CRUD for Auth/Internal
@@ -54,26 +94,32 @@ export class UsersService {
   // Identity - Meu Perfil
   // ============================================================================
 
-  async getMe(userId: string) {
+  async getMe(userId: string): Promise<UserMeResponseDto> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
+      select: USER_ME_SELECT,
     });
     if (!user) throw new NotFoundAppException(ErrorCode.USER_NOT_FOUND);
-    return user;
+    return toMeResponse(user);
   }
 
-  async updateMe(userId: string, dto: UpdateProfileDto) {
-    return this.prisma.user.update({
+  async updateMe(
+    userId: string,
+    dto: UpdateProfileDto,
+  ): Promise<UserMeResponseDto> {
+    const user = await this.prisma.user.update({
       where: { id: userId },
       data: {
         firstName: dto.firstName,
         lastName: dto.lastName,
         phone: dto.phone,
       },
+      select: USER_ME_SELECT,
     });
+    return toMeResponse(user);
   }
 
-  async updateAvatar(userId: string, file: any) {
+  async updateAvatar(userId: string, _file: any) {
     // Aqui viria a integração com S3/GCS.
     const fakeUrl = `https://cdn.example.com/avatars/${userId}-${Date.now()}.png`;
     await this.prisma.user.update({
@@ -94,9 +140,11 @@ export class UsersService {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundAppException(ErrorCode.USER_NOT_FOUND);
 
-    if (!user.password) throw new BadRequestAppException(ErrorCode.INVALID_CURRENT_PASSWORD);
+    if (!user.password)
+      throw new BadRequestAppException(ErrorCode.INVALID_CURRENT_PASSWORD);
     const isValid = await bcrypt.compare(dto.currentPassword, user.password);
-    if (!isValid) throw new BadRequestAppException(ErrorCode.INVALID_CURRENT_PASSWORD);
+    if (!isValid)
+      throw new BadRequestAppException(ErrorCode.INVALID_CURRENT_PASSWORD);
 
     const newHash = await bcrypt.hash(dto.newPassword, 10);
 
@@ -130,7 +178,8 @@ export class UsersService {
   async updatePreferences(userId: string, dto: UpdatePreferencesDto) {
     return this.prisma.user.update({
       where: { id: userId },
-      data: { ...dto },
+      // Os enums do DTO espelham os do Prisma valor a valor — conversão seguro no limite ORM/API.
+      data: { ...dto } as Prisma.UserUpdateInput,
       select: {
         theme: true,
         language: true,
@@ -142,38 +191,37 @@ export class UsersService {
 
   async getAccounts(userId: string) {
     return this.prisma.membership.findMany({
-      where: { userId, status: 'ACTIVE', account: { active: true, deletedAt: null } },
+      where: {
+        userId,
+        status: 'ACTIVE',
+        account: { active: true, deletedAt: null },
+      },
       include: { account: true, profile: true },
     });
   }
 
-  async getPermissions(userId: string, currentAccountId: string) {
-    const membership = await this.prisma.membership.findFirst({
-      where: { userId, accountId: currentAccountId },
-      include: {
-        profile: {
-          include: {
-            permissions: { include: { permission: true } },
-            overrides: { include: { permission: true } }
-          }
-        }
-      }
-    });
-
-    if (!membership) throw new ForbiddenAppException(ErrorCode.USER_NOT_MEMBER_OF_ACCOUNT);
-
-    // Mapeamento mockado das permissões do profile
-    const permissions = membership.profile.permissions.map(p => p.permission.code);
-    const overrides = membership.profile.overrides.map(o => ({ code: o.permission.code, effect: o.effect }));
-
-    return { permissions, overrides, menus: [], components: [] };
+  /** Delega para `AuthorizationService`, fonte única do cálculo de permissões (com cache). */
+  async getPermissions(membershipId: string) {
+    return this.authorizationService.calculatePermissions(membershipId);
   }
 
-  async getSessions(userId: string) {
-    return this.prisma.session.findMany({
+  async getSessions(
+    userId: string,
+    currentSessionId?: string,
+  ): Promise<SessionResponseDto[]> {
+    const sessions = await this.prisma.session.findMany({
       where: { userId, revokedAt: null },
-      orderBy: { lastAccessAt: 'desc' }, // Assumindo lastAccessAt = updatedAt ou similar
-    } as any);
+      orderBy: { updatedAt: 'desc' },
+    });
+
+    return sessions.map((s) => ({
+      id: s.id,
+      ipAddress: s.ipAddress,
+      userAgent: s.userAgent,
+      loggedInAt: s.createdAt,
+      lastAccessAt: s.updatedAt,
+      isCurrentSession: s.id === currentSessionId,
+    }));
   }
 
   async revokeSession(userId: string, sessionId: string) {
@@ -198,7 +246,8 @@ export class UsersService {
       where: { userId: id, accountId: currentAccountId },
       include: { user: true },
     });
-    if (!membership) throw new NotFoundAppException(ErrorCode.USER_NOT_FOUND_IN_ACCOUNT);
+    if (!membership)
+      throw new NotFoundAppException(ErrorCode.USER_NOT_FOUND_IN_ACCOUNT);
 
     return {
       id: membership.user.id,
@@ -208,13 +257,13 @@ export class UsersService {
     };
   }
 
-  async listUsers(currentAccountId: string, query: any) {
-    const { page = 1, size = 10, search, status } = query;
+  async listUsers(currentAccountId: string, query: ListUsersQueryDto) {
+    const { page, size, search, status } = query;
     const skip = (page - 1) * size;
 
     const whereClause: Prisma.MembershipWhereInput = {
       accountId: currentAccountId,
-      status: { not: 'REMOVED' }
+      status: { not: 'REMOVED' },
     };
 
     if (status) whereClause.status = status;
@@ -223,7 +272,7 @@ export class UsersService {
         OR: [
           { firstName: { contains: search, mode: 'insensitive' } },
           { email: { contains: search, mode: 'insensitive' } },
-        ]
+        ],
       };
     }
 
@@ -231,17 +280,45 @@ export class UsersService {
       this.prisma.membership.count({ where: whereClause }),
       this.prisma.membership.findMany({
         where: whereClause,
-        include: { user: true, profile: true },
-        skip: Number(skip),
-        take: Number(size),
-      })
+        include: {
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              username: true,
+              phone: true,
+              avatar: true,
+              status: true,
+              authProvider: true,
+              emailVerifiedAt: true,
+              lastLoginAt: true,
+              createdAt: true,
+            },
+          },
+          profile: true,
+        },
+        skip,
+        take: size,
+      }),
     ]);
 
-    return { items, meta: { total, page: Number(page), size: Number(size), pages: Math.ceil(total / size) } };
+    return {
+      ...PageMetaDto.create({ page, size, totalElements: total }),
+      content: items,
+    };
   }
 
-  async createUserAdmin(currentAccountId: string, dto: CreateUserAdminDto) {
-    let user = await this.prisma.user.findUnique({ where: { email: dto.email } });
+  async createUserAdmin(
+    currentAccountId: string,
+    dto: CreateUserAdminDto,
+  ): Promise<UserMeResponseDto> {
+    let user = await this.prisma.user.findUnique({
+      where: { email: dto.email },
+      select: USER_ME_SELECT,
+    });
+    const isNewUser = !user;
 
     await this.prisma.$transaction(async (tx) => {
       if (!user) {
@@ -252,16 +329,20 @@ export class UsersService {
             username: dto.email,
             email: dto.email,
             phone: dto.phone,
-            password: 'TEMP_PASSWORD_NEEDS_RESET', // Mock password until reset logic
-          }
+            // Senha aleatória e sem uso prático — o usuário só consegue acessar a conta
+            // depois de definir a própria senha pelo link enviado em sendSetPasswordEmail.
+            password: await bcrypt.hash(uuidv4(), 10),
+          },
+          select: USER_ME_SELECT,
         });
       }
 
       const existingMem = await tx.membership.findFirst({
-        where: { userId: user.id, accountId: currentAccountId }
+        where: { userId: user.id, accountId: currentAccountId },
       });
 
-      if (existingMem) throw new ConflictAppException(ErrorCode.USER_ALREADY_IN_ACCOUNT);
+      if (existingMem)
+        throw new ConflictAppException(ErrorCode.USER_ALREADY_IN_ACCOUNT);
 
       await tx.membership.create({
         data: {
@@ -269,58 +350,99 @@ export class UsersService {
           userId: user.id,
           profileId: dto.profileId,
           status: 'INVITED',
-        }
+        },
       });
-      // VerificationToken logic here...
     });
 
-    return user;
+    if (isNewUser) {
+      await this.sendSetPasswordEmail(user);
+    }
+
+    return toMeResponse(user);
   }
 
-  async updateUserAdmin(currentAccountId: string, id: string, dto: UpdateUserAdminDto) {
-    const mem = await this.prisma.membership.findFirst({
-      where: { userId: id, accountId: currentAccountId }
+  /** Reaproveita o mecanismo de reset de senha para que o usuário recém-convidado defina a própria senha. */
+  private async sendSetPasswordEmail(user: {
+    id: string;
+    email: string;
+    firstName: string;
+  }) {
+    const resetToken = uuidv4();
+    await this.prisma.token.create({
+      data: {
+        userId: user.id,
+        type: TokenType.PASSWORD_RESET,
+        token: await bcrypt.hash(resetToken, 10),
+        expiresAt: addHours(new Date(), 24),
+      },
     });
-    if (!mem) throw new NotFoundAppException(ErrorCode.USER_NOT_FOUND_IN_ACCOUNT);
 
-    return this.prisma.user.update({
+    const resetLink = `${this.configService.get<string>('app.frontendUrl')}/reset-password?token=${resetToken}`;
+    await this.emailService.resetPassword({
+      url: resetLink,
+      name: user.firstName,
+      email: user.email,
+    });
+  }
+
+  async updateUserAdmin(
+    currentAccountId: string,
+    id: string,
+    dto: UpdateUserAdminDto,
+  ) {
+    const mem = await this.prisma.membership.findFirst({
+      where: { userId: id, accountId: currentAccountId },
+    });
+    if (!mem)
+      throw new NotFoundAppException(ErrorCode.USER_NOT_FOUND_IN_ACCOUNT);
+
+    const user = await this.prisma.user.update({
       where: { id },
       data: {
         firstName: dto.firstName,
         lastName: dto.lastName,
         phone: dto.phone,
-      }
+      },
+      select: USER_ME_SELECT,
     });
+    return toMeResponse(user);
   }
 
   async softDeleteUser(currentAccountId: string, id: string) {
     const mem = await this.prisma.membership.findFirst({
       where: { userId: id, accountId: currentAccountId },
-      include: { profile: true }
+      include: { profile: true },
     });
-    if (!mem) throw new NotFoundAppException(ErrorCode.USER_NOT_FOUND_IN_ACCOUNT);
+    if (!mem)
+      throw new NotFoundAppException(ErrorCode.USER_NOT_FOUND_IN_ACCOUNT);
     // Basic owner protection logic (simplified)
-    if (mem.profile.name === 'OWNER') throw new ForbiddenAppException(ErrorCode.CANNOT_DELETE_OWNER);
+    if (mem.profile.name === 'OWNER')
+      throw new ForbiddenAppException(ErrorCode.CANNOT_DELETE_OWNER);
 
     await this.prisma.membership.update({
       where: { id: mem.id },
-      data: { status: 'REMOVED' }
+      data: { status: 'REMOVED' },
     });
   }
 
-  async updateUserStatus(currentAccountId: string, id: string, dto: UpdateUserStatusDto) {
+  async updateUserStatus(
+    currentAccountId: string,
+    id: string,
+    dto: UpdateUserStatusDto,
+  ) {
     const mem = await this.prisma.membership.findFirst({
       where: { userId: id, accountId: currentAccountId },
-      include: { profile: true }
+      include: { profile: true },
     });
-    if (!mem) throw new NotFoundAppException(ErrorCode.USER_NOT_FOUND_IN_ACCOUNT);
+    if (!mem)
+      throw new NotFoundAppException(ErrorCode.USER_NOT_FOUND_IN_ACCOUNT);
     if (mem.profile.name === 'OWNER' && dto.status === 'BLOCKED') {
       throw new ForbiddenAppException(ErrorCode.CANNOT_BLOCK_OWNER);
     }
 
     await this.prisma.membership.update({
       where: { id: mem.id },
-      data: { status: dto.status as any }
+      data: { status: dto.status as any },
     });
   }
 }

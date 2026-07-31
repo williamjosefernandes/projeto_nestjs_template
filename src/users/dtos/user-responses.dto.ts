@@ -1,45 +1,51 @@
-import { ApiProperty } from '@nestjs/swagger';
-
-export class StandardSuccessResponseDto<T> {
-  @ApiProperty({ example: true })
-  success!: boolean;
-
-  @ApiProperty({ example: 'Operação realizada com sucesso.' })
-  message!: string;
-
-  data?: T;
-
-  meta?: any;
-}
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { UserStatus, AuthProvider } from '@prisma/client';
 
 export class UserMeResponseDto {
+  @ApiProperty()
   id!: string;
+
+  @ApiProperty()
   firstName!: string;
+
+  @ApiPropertyOptional({ nullable: true })
   lastName!: string | null;
-  fullName!: string;
+
+  @ApiProperty()
   email!: string;
+
+  @ApiPropertyOptional({ nullable: true })
   phone!: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
   avatar!: string | null;
-  status!: string;
-  emailConfirmed!: boolean;
+
+  @ApiProperty({ enum: UserStatus })
+  status!: UserStatus;
+
+  @ApiProperty({ enum: AuthProvider })
+  authProvider!: AuthProvider;
+
+  @ApiProperty()
+  emailVerified!: boolean;
+
+  @ApiPropertyOptional({ nullable: true })
   lastLoginAt!: Date | null;
+
+  @ApiProperty()
   createdAt!: Date;
-  preferences!: any;
 }
 
 export class PublicUserResponseDto {
+  @ApiProperty()
   id!: string;
-  firstName!: string;
-  lastName!: string | null;
-  avatar!: string | null;
-}
 
-export class UserListDto {
-  id!: string;
+  @ApiProperty()
   firstName!: string;
+
+  @ApiPropertyOptional({ nullable: true })
   lastName!: string | null;
-  email!: string;
-  phone!: string | null;
-  status!: string;
-  createdAt!: Date;
+
+  @ApiPropertyOptional({ nullable: true })
+  avatar!: string | null;
 }

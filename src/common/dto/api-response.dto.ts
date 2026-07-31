@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { ErrorCode } from '../enum/error-code.enum';
+import { SuccessMessageCode } from '../enum/success-message-code.enum';
 
 export class ErrorDto {
   @ApiProperty({
@@ -10,12 +11,16 @@ export class ErrorDto {
   })
   code: ErrorCode;
 
-  @ApiProperty({ description: 'Mensagem legível no idioma do servidor — apenas para debug/log.' })
+  @ApiProperty({
+    description:
+      'Mensagem legível no idioma do servidor — apenas para debug/log.',
+  })
   message: string;
 
   @ApiProperty({
     required: false,
-    description: 'Detalhes estruturados adicionais sobre o erro (ex.: lista de violações de validação por campo).',
+    description:
+      'Detalhes estruturados adicionais sobre o erro (ex.: lista de violações de validação por campo).',
   })
   details?: unknown;
 }
@@ -29,6 +34,14 @@ export class ApiResponseDto<T = any> {
 
   @ApiProperty({ required: false })
   message?: string;
+
+  @ApiProperty({
+    enum: SuccessMessageCode,
+    required: false,
+    description:
+      'Código de mensagem estável e independente de idioma, análogo a `ErrorDto.code`.',
+  })
+  messageCode?: SuccessMessageCode;
 
   @ApiProperty({ required: false })
   data?: T;

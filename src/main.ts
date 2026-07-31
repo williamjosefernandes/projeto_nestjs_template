@@ -1,15 +1,23 @@
-import { NestFactory, Reflector } from '@nestjs/core';
+import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe, Logger } from '@nestjs/common';
-import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
-import { TransformInterceptor } from './common/interceptors/transform.interceptor';
+import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import helmet from 'helmet';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const logger = new Logger('Bootstrap');
+  const configService = app.get(ConfigService);
 
-  app.enableCors();
+  app.use(helmet());
+
+  const corsOrigins = configService.get<string[]>('app.corsOrigins') ?? [];
+  app.enableCors({
+    origin: corsOrigins.length > 0 ? corsOrigins : false,
+    credentials: true,
+  });
+
   app.setGlobalPrefix('api');
 
   app.useGlobalPipes(
@@ -19,23 +27,35 @@ async function bootstrap() {
       forbidNonWhitelisted: true,
     }),
   );
-  
-  app.useGlobalFilters(new AllExceptionsFilter());
-  app.useGlobalInterceptors(new TransformInterceptor(app.get(Reflector)));
+
+  // AllExceptionsFilter e TransformInterceptor são registrados via APP_FILTER/APP_INTERCEPTOR
+  // em AppModule — precisam de DI (I18nService) e não podem mais ser instanciados aqui.
 
   const config = new DocumentBuilder()
     .setTitle('API MadeCoders')
-    .setDescription('API Backend do MadeCoders')
+    .setDescription(
+      [
+        'API Backend do MadeCoders.',
+        '',
+        'Todas as respostas seguem o envelope `{ success, timestamp, message, messageCode, data?, error?, requestId }`.',
+        'Use `messageCode`/`error.code` para lógica de cliente — nunca faça parsing do texto de `message`.',
+        'Idioma resolvido via query `?lang=`, header `x-lang` ou `Accept-Language` (padrão: inglês).',
+        'Rotas administrativas de contas exigem o header `x-account-id` com o Membership ativo.',
+      ].join('\n'),
+    )
     .setVersion('1.0')
     .addBearerAuth()
+    .addTag('Authentication')
+    .addTag('Identity / Users')
+    .addTag('Perguntas Frequentes')
     .build();
-    
+
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/docs', app, document);
 
-  const port = process.env.PORT || 3001;
+  const port = configService.get<number>('app.port');
   await app.listen(port);
-  
+
   logger.log(`Application is running on: http://localhost:${port}`);
   logger.log(`Swagger docs at: http://localhost:${port}/api/docs`);
 }

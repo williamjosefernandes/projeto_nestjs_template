@@ -19,7 +19,8 @@ export class UserResponseDto {
   @ApiProperty({
     required: false,
     nullable: true,
-    description: 'Pode ser nulo para contas provisionadas via login por telefone ou anônimo.',
+    description:
+      'Pode ser nulo para contas provisionadas via login por telefone ou anônimo.',
   })
   email?: string | null;
 
@@ -118,6 +119,18 @@ export class LoginResponseDto {
   @ApiProperty()
   auth!: AuthTokensDto;
 
+  @ApiProperty()
+  user!: UserResponseDto;
+
+  @ApiProperty({ required: false })
+  currentAccount?: CurrentAccountDto;
+
+  @ApiProperty({ type: [AccountListItemDto], required: false })
+  accounts?: AccountListItemDto[];
+}
+
+/** Mesmo contexto de `LoginResponseDto`, sem os tokens — usado por `GET /auth/me`. */
+export class MeContextResponseDto {
   @ApiProperty()
   user!: UserResponseDto;
 

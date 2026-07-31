@@ -1,4 +1,8 @@
-export const emailConfirmTemplate = (name: string, email: string, code: string) => `
+export const emailConfirmTemplate = (
+  name: string,
+  email: string,
+  code: string,
+) => `
 <!DOCTYPE html>
 <html lang="pt-BR">
 

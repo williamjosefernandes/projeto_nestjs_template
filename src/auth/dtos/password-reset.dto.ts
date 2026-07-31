@@ -7,20 +7,6 @@ export class ForgotPasswordDto {
   email: string;
 }
 
-export class ValidateResetPasswordTokenDto {
-  @ApiProperty()
-  @IsNotEmpty()
-  token: string;
-}
-
-export class ValidateResetPasswordTokenResponseDto {
-  @ApiProperty()
-  valid: boolean;
-
-  @ApiProperty({ required: false })
-  expiresAt?: string;
-}
-
 export class ResetPasswordDto {
   @ApiProperty()
   @IsNotEmpty()
@@ -28,8 +14,9 @@ export class ResetPasswordDto {
 
   @ApiProperty()
   @MinLength(8)
-  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/,
-    { message: 'Password must contain at least one uppercase letter, one lowercase letter, one number and one special character' }
-  )
+  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/, {
+    message:
+      'Password must contain at least one uppercase letter, one lowercase letter, one number and one special character',
+  })
   newPassword: string;
 }

@@ -437,6 +437,9 @@ CREATE UNIQUE INDEX "sessions_refreshToken_key" ON "sessions"("refreshToken");
 CREATE INDEX "sessions_userId_expiresAt_idx" ON "sessions"("userId", "expiresAt");
 
 -- CreateIndex
+CREATE INDEX "sessions_currentMembershipId_idx" ON "sessions"("currentMembershipId");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "tokens_token_key" ON "tokens"("token");
 
 -- CreateIndex
@@ -479,7 +482,13 @@ CREATE UNIQUE INDEX "permissions_code_key" ON "permissions"("code");
 CREATE INDEX "permissions_permissionGroupId_idx" ON "permissions"("permissionGroupId");
 
 -- CreateIndex
+CREATE INDEX "profile_permissions_permissionId_idx" ON "profile_permissions"("permissionId");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "profile_permissions_profileId_permissionId_key" ON "profile_permissions"("profileId", "permissionId");
+
+-- CreateIndex
+CREATE INDEX "permission_overrides_permissionId_idx" ON "permission_overrides"("permissionId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "permission_overrides_profileId_permissionId_key" ON "permission_overrides"("profileId", "permissionId");
@@ -497,7 +506,7 @@ CREATE INDEX "companies_tradeName_idx" ON "companies"("tradeName");
 CREATE UNIQUE INDEX "customers_accountId_key" ON "customers"("accountId");
 
 -- CreateIndex
-CREATE INDEX "customers_document_idx" ON "customers"("document");
+CREATE UNIQUE INDEX "customers_document_key" ON "customers"("document");
 
 -- CreateIndex
 CREATE INDEX "addresses_accountId_idx" ON "addresses"("accountId");
@@ -513,9 +522,6 @@ CREATE UNIQUE INDEX "states_countryId_code_key" ON "states"("countryId", "code")
 
 -- CreateIndex
 CREATE UNIQUE INDEX "cities_ibgeCode_key" ON "cities"("ibgeCode");
-
--- CreateIndex
-CREATE INDEX "cities_stateId_idx" ON "cities"("stateId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "cities_stateId_name_key" ON "cities"("stateId", "name");
@@ -549,6 +555,9 @@ CREATE INDEX "faqs_isActive_order_idx" ON "faqs"("isActive", "order");
 
 -- AddForeignKey
 ALTER TABLE "sessions" ADD CONSTRAINT "sessions_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "sessions" ADD CONSTRAINT "sessions_currentMembershipId_fkey" FOREIGN KEY ("currentMembershipId") REFERENCES "memberships"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "tokens" ADD CONSTRAINT "tokens_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;

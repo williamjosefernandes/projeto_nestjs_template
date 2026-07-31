@@ -1,4 +1,12 @@
-import { IsString, IsNotEmpty, IsEmail, MaxLength, Matches, IsOptional, IsEnum } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsEmail,
+  MaxLength,
+  Matches,
+  IsOptional,
+  IsEnum,
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { UserStatus } from '@prisma/client';
 
@@ -22,7 +30,9 @@ export class CreateUserAdminDto {
 
   @ApiPropertyOptional({ example: '+5511999999998' })
   @IsOptional()
-  @Matches(/^\+[1-9]\d{1,14}$/, { message: 'Telefone deve seguir o padrão E.164' })
+  @Matches(/^\+[1-9]\d{1,14}$/, {
+    message: 'Telefone deve seguir o padrão E.164',
+  })
   phone?: string;
 
   @ApiProperty({ example: 'uuid-do-profile' })
@@ -46,7 +56,9 @@ export class UpdateUserAdminDto {
 
   @ApiPropertyOptional({ example: '+5511999999998' })
   @IsOptional()
-  @Matches(/^\+[1-9]\d{1,14}$/, { message: 'Telefone deve seguir o padrão E.164' })
+  @Matches(/^\+[1-9]\d{1,14}$/, {
+    message: 'Telefone deve seguir o padrão E.164',
+  })
   phone?: string;
 }
 

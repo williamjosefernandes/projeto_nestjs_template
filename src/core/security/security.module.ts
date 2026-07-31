@@ -1,4 +1,5 @@
 import { Global, Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { CacheModule } from '@nestjs/cache-manager';
 import { AuthorizationService } from './services/authorization.service';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
@@ -9,17 +10,21 @@ import { PermissionGuard } from './guards/permission.guard';
 
 import { SecuritySessionService } from './providers/security-session.service';
 import { SecurityMembershipService } from './providers/security-membership.service';
-import { PrismaService } from '../../database/prisma.service';
 
+/**
+ * `JwtAuthGuard` é registrado como `APP_GUARD`: toda rota exige autenticação
+ * por padrão (fail-closed) e só fica pública com `@Public()` explícito.
+ */
 @Global()
 @Module({
-  imports: [
-    CacheModule.register(),
-  ],
+  imports: [CacheModule.register()],
   providers: [
-    PrismaService,
     AuthorizationService,
     JwtAuthGuard,
+    {
+      provide: APP_GUARD,
+      useExisting: JwtAuthGuard,
+    },
     SessionGuard,
     MembershipGuard,
     ProfileGuard,
@@ -31,7 +36,7 @@ import { PrismaService } from '../../database/prisma.service';
     {
       provide: 'I_SECURITY_MEMBERSHIP_SERVICE',
       useClass: SecurityMembershipService,
-    }
+    },
   ],
   exports: [
     AuthorizationService,
@@ -41,7 +46,7 @@ import { PrismaService } from '../../database/prisma.service';
     ProfileGuard,
     PermissionGuard,
     'I_SECURITY_SESSION_SERVICE',
-    'I_SECURITY_MEMBERSHIP_SERVICE'
+    'I_SECURITY_MEMBERSHIP_SERVICE',
   ],
 })
 export class SecurityModule {}

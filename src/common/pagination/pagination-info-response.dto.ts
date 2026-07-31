@@ -11,22 +11,37 @@ export class PageMetaDto {
   @ApiProperty({ description: 'Quantidade de itens por página.', example: 20 })
   size: number;
 
-  @ApiProperty({ description: 'Quantidade total de itens encontrados na consulta.', example: 250 })
+  @ApiProperty({
+    description: 'Quantidade total de itens encontrados na consulta.',
+    example: 250,
+  })
   totalElements: number;
 
   @ApiProperty({ description: 'Quantidade total de páginas.', example: 13 })
   totalPages: number;
 
-  @ApiProperty({ description: 'Indica se a página atual é a primeira.', example: true })
+  @ApiProperty({
+    description: 'Indica se a página atual é a primeira.',
+    example: true,
+  })
   first: boolean;
 
-  @ApiProperty({ description: 'Indica se a página atual é a última.', example: false })
+  @ApiProperty({
+    description: 'Indica se a página atual é a última.',
+    example: false,
+  })
   last: boolean;
 
-  @ApiProperty({ description: 'Indica se existe uma próxima página.', example: true })
+  @ApiProperty({
+    description: 'Indica se existe uma próxima página.',
+    example: true,
+  })
   hasNext: boolean;
 
-  @ApiProperty({ description: 'Indica se existe uma página anterior.', example: false })
+  @ApiProperty({
+    description: 'Indica se existe uma página anterior.',
+    example: false,
+  })
   hasPrevious: boolean;
 
   constructor(meta?: PageMetaDto) {
@@ -34,8 +49,13 @@ export class PageMetaDto {
   }
 
   /** Calcula os metadados de paginação a partir da página, do tamanho da página e do total de itens. */
-  static create(params: { page: number; size: number; totalElements: number }): PageMetaDto {
-    const totalPages = params.size > 0 ? Math.ceil(params.totalElements / params.size) : 0;
+  static create(params: {
+    page: number;
+    size: number;
+    totalElements: number;
+  }): PageMetaDto {
+    const totalPages =
+      params.size > 0 ? Math.ceil(params.totalElements / params.size) : 0;
     const first = params.page <= 1;
     const last = params.page >= totalPages;
 

@@ -1,22 +1,26 @@
 import { IsString, IsOptional, IsEnum } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { Theme, Language, TimeFormat } from '@prisma/client';
+import {
+  UserTheme,
+  UserLanguage,
+  UserTimeFormat,
+} from './user-preference.enums';
 
 export class UpdatePreferencesDto {
-  @ApiPropertyOptional({ enum: Theme, example: Theme.DARK })
+  @ApiPropertyOptional({ enum: UserTheme, example: UserTheme.DARK })
   @IsOptional()
-  @IsEnum(Theme)
-  theme?: Theme;
+  @IsEnum(UserTheme)
+  theme?: UserTheme;
 
-  @ApiPropertyOptional({ enum: Language, example: Language.PT_BR })
+  @ApiPropertyOptional({ enum: UserLanguage, example: UserLanguage.PT_BR })
   @IsOptional()
-  @IsEnum(Language)
-  language?: Language;
+  @IsEnum(UserLanguage)
+  language?: UserLanguage;
 
-  @ApiPropertyOptional({ enum: TimeFormat, example: TimeFormat.H24 })
+  @ApiPropertyOptional({ enum: UserTimeFormat, example: UserTimeFormat.H24 })
   @IsOptional()
-  @IsEnum(TimeFormat)
-  timeFormat?: TimeFormat;
+  @IsEnum(UserTimeFormat)
+  timeFormat?: UserTimeFormat;
 
   @ApiPropertyOptional({ example: 'America/Sao_Paulo' })
   @IsOptional()

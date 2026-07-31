@@ -1,0 +1,46 @@
+{
+  "INTERNAL_SERVER_ERROR": "Internal server error.",
+  "VALIDATION_ERROR": "The request contains validation errors.",
+  "BAD_REQUEST": "Invalid request.",
+  "NOT_FOUND": "Resource not found.",
+  "CONFLICT": "Conflict while processing the request.",
+  "EMAIL_DELIVERY_FAILED": "The email could not be sent.",
+
+  "INVALID_CREDENTIALS": "Invalid credentials.",
+  "UNVERIFIED_EMAIL": "Email not verified.",
+  "ACCOUNT_INACTIVE": "Inactive, suspended or blocked account.",
+  "PASSWORD_NOT_PROVIDED": "Password not provided.",
+  "FIREBASE_TOKEN_NOT_PROVIDED": "Firebase token not provided.",
+  "INVALID_FIREBASE_TOKEN": "Invalid Firebase token.",
+  "UNAUTHENTICATED": "User not authenticated.",
+  "EMAIL_ALREADY_IN_USE": "This email is already in use.",
+
+  "INVALID_TOKEN": "Invalid or malformed token.",
+  "TOKEN_EXPIRED": "Token expired.",
+  "INVALID_REFRESH_TOKEN": "Invalid refresh token.",
+  "REFRESH_TOKEN_EXPIRED": "Refresh token expired.",
+  "SESSION_NOT_FOUND": "Session not found.",
+  "SESSION_EXPIRED": "Session expired.",
+  "SESSION_REVOKED": "Session revoked.",
+
+  "PERMISSION_DENIED": "Permission denied.",
+  "MEMBERSHIP_INVALID": "User does not have access to this account.",
+  "PROFILE_INVALID": "Invalid profile to access this resource.",
+  "ACCOUNT_ACCESS_DENIED": "Access denied for this account.",
+  "USER_BLOCKED": "User blocked.",
+
+  "USER_NOT_FOUND": "User not found.",
+  "USER_NOT_FOUND_IN_ACCOUNT": "User not found in this account.",
+  "USER_NOT_MEMBER_OF_ACCOUNT": "User is not a member of this account.",
+  "USER_ALREADY_IN_ACCOUNT": "User already belongs to this account.",
+  "INVALID_CURRENT_PASSWORD": "Invalid current password.",
+  "CANNOT_DELETE_OWNER": "The account owner cannot be removed.",
+  "CANNOT_BLOCK_OWNER": "The account owner cannot be blocked.",
+
+  "INVALID_VERIFICATION_CODE": "Invalid verification code.",
+  "VERIFICATION_CODE_EXPIRED": "Verification code expired.",
+  "INVALID_RESET_TOKEN": "Invalid password reset token.",
+  "RESET_TOKEN_EXPIRED": "Password reset token expired.",
+
+  "FAQ_NOT_FOUND": "FAQ not found."
+}

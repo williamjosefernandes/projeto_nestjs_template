@@ -20,7 +20,10 @@ export class MatchConstraint implements ValidatorConstraintInterface {
   }
 }
 
-export function MatchDecorator(property: string, validationOptions?: ValidationOptions) {
+export function MatchDecorator(
+  property: string,
+  validationOptions?: ValidationOptions,
+) {
   return (object: any, propertyName: string) => {
     registerDecorator({
       target: object.constructor,

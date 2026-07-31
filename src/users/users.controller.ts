@@ -1,23 +1,68 @@
-import { Controller, Get, Patch, Post, Put, Delete, Body, Param, Query, UseGuards, UseInterceptors, UploadedFile, HttpCode } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Patch,
+  Post,
+  Put,
+  Delete,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+  UseInterceptors,
+  UploadedFile,
+  HttpCode,
+} from '@nestjs/common';
 import { UsersService } from './users.service';
-import { CurrentUser } from '../common/decorators/current-user.decorator';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { ApiTags, ApiBearerAuth, ApiOperation, ApiConsumes, ApiBody, ApiOkResponse, ApiBadRequestResponse } from '@nestjs/swagger';
+import { MembershipGuard } from '../core/security/guards/membership.guard';
+import { PermissionGuard } from '../core/security/guards/permission.guard';
+import {
+  CurrentUser,
+  CurrentAccount,
+  CurrentMembership,
+} from '../core/security/decorators/context.decorators';
+import { Permissions } from '../core/security/decorators/metadata.decorators';
+import {
+  UserContext,
+  AccountContext,
+  MembershipContext,
+} from '../core/security/interfaces/request-context.interface';
+import { SuccessMessage } from '../common/decorators/success-message.decorator';
+import { SuccessMessageCode } from '../common/enum/success-message-code.enum';
+import { SkipTransform } from '../common/decorators/skip-transform.decorator';
+import { ApiStandardResponse } from '../common/decorators/api-standard-response.decorator';
+import { ApiCommonErrorResponses } from '../common/decorators/api-error-responses.decorator';
+import {
+  ApiTags,
+  ApiBearerAuth,
+  ApiOperation,
+  ApiConsumes,
+  ApiBody,
+  ApiParam,
+} from '@nestjs/swagger';
 // dtos
 import { UpdateProfileDto } from './dtos/update-profile.dto';
 import { ChangePasswordDto } from './dtos/change-password.dto';
 import { UpdatePreferencesDto } from './dtos/update-preferences.dto';
-import { CreateUserAdminDto, UpdateUserAdminDto, UpdateUserStatusDto } from './dtos/admin-users.dto';
+import {
+  CreateUserAdminDto,
+  UpdateUserAdminDto,
+  UpdateUserStatusDto,
+} from './dtos/admin-users.dto';
+import { ListUsersQueryDto } from './dtos/list-users-query.dto';
+import {
+  UserMeResponseDto,
+  PublicUserResponseDto,
+} from './dtos/user-responses.dto';
+import { UserPreferencesResponseDto } from './dtos/user-preferences-response.dto';
+import { UserPermissionsResponseDto } from './dtos/user-permissions-response.dto';
+import { SessionResponseDto } from '../auth/dtos/session.dto';
 
-// Para mockar FileInterceptor e File Upload tipings sem a necessidade de todas dependências no nest.
 import { FileInterceptor } from '@nestjs/platform-express';
-import { Express } from 'express';
-// Note: Some decorators like @Roles() @Permissions() aren't fully implemented in this module but would exist.
-// We use simple strings or comments here for `Permissão` tracking as specified in the rules.
 
 @ApiTags('Identity / Users')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@ApiCommonErrorResponses()
 @Controller({ path: 'users', version: '1' })
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
@@ -27,143 +72,228 @@ export class UsersController {
   // ============================================================================
 
   @Get('me')
-  @ApiOperation({ summary: 'Retornar os dados completos do usuário autenticado.' })
-  async getProfile(@CurrentUser() user: any) {
-    const profile = await this.usersService.getMe(user.id);
-    return { success: true, message: 'Perfil recuperado com sucesso.', data: this.sanitizeUser(profile) };
+  @SuccessMessage(SuccessMessageCode.PROFILE_RETRIEVED)
+  @ApiOperation({
+    summary: 'Retornar os dados completos do usuário autenticado.',
+  })
+  @ApiStandardResponse(UserMeResponseDto)
+  async getProfile(@CurrentUser() user: UserContext) {
+    return this.usersService.getMe(user.id);
   }
 
   @Put('me')
+  @SuccessMessage(SuccessMessageCode.PROFILE_UPDATED)
   @ApiOperation({ summary: 'Atualizar perfil do usuário autenticado.' })
-  async updateProfile(@CurrentUser() user: any, @Body() dto: UpdateProfileDto) {
-    const updated = await this.usersService.updateMe(user.id, dto);
-    return { success: true, message: 'Perfil atualizado com sucesso.', data: this.sanitizeUser(updated) };
+  @ApiStandardResponse(UserMeResponseDto)
+  async updateProfile(
+    @CurrentUser() user: UserContext,
+    @Body() dto: UpdateProfileDto,
+  ) {
+    return this.usersService.updateMe(user.id, dto);
   }
 
   @Patch('me/avatar')
   @UseInterceptors(FileInterceptor('file'))
   @ApiConsumes('multipart/form-data')
-  @ApiBody({ schema: { type: 'object', properties: { file: { type: 'string', format: 'binary' } } } })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: { file: { type: 'string', format: 'binary' } },
+    },
+  })
+  @SuccessMessage(SuccessMessageCode.AVATAR_UPDATED)
   @ApiOperation({ summary: 'Alterar avatar do usuário autenticado.' })
-  async updateAvatar(@CurrentUser() user: any, @UploadedFile() file: any) {
-    const result = await this.usersService.updateAvatar(user.id, file);
-    return { success: true, message: 'Avatar atualizado com sucesso.', data: result };
+  async updateAvatar(
+    @CurrentUser() user: UserContext,
+    @UploadedFile() file: any,
+  ) {
+    return this.usersService.updateAvatar(user.id, file);
   }
 
   @Delete('me/avatar')
+  @SuccessMessage(SuccessMessageCode.AVATAR_REMOVED)
   @ApiOperation({ summary: 'Remover avatar do usuário autenticado.' })
-  async removeAvatar(@CurrentUser() user: any) {
+  async removeAvatar(@CurrentUser() user: UserContext) {
     await this.usersService.removeAvatar(user.id);
-    return { success: true, message: 'Avatar removido com sucesso.' };
   }
 
   @Patch('me/password')
+  @SuccessMessage(SuccessMessageCode.PASSWORD_CHANGED)
   @ApiOperation({ summary: 'Alterar senha do usuário autenticado.' })
-  async changePassword(@CurrentUser() user: any, @Body() dto: ChangePasswordDto) {
+  async changePassword(
+    @CurrentUser() user: UserContext,
+    @Body() dto: ChangePasswordDto,
+  ) {
     await this.usersService.changePassword(user.id, dto);
-    return { success: true, message: 'Senha atualizada com sucesso.' };
   }
 
   @Get('me/preferences')
+  @SuccessMessage(SuccessMessageCode.DATA_RETRIEVED)
   @ApiOperation({ summary: 'Retornar as preferências de UI/UX do usuário.' })
-  async getPreferences(@CurrentUser() user: any) {
-    const pref = await this.usersService.getPreferences(user.id);
-    return { success: true, data: pref };
+  @ApiStandardResponse(UserPreferencesResponseDto)
+  async getPreferences(@CurrentUser() user: UserContext) {
+    return this.usersService.getPreferences(user.id);
   }
 
   @Put('me/preferences')
+  @SuccessMessage(SuccessMessageCode.PREFERENCES_UPDATED)
   @ApiOperation({ summary: 'Atualizar as preferências do usuário.' })
-  async updatePreferences(@CurrentUser() user: any, @Body() dto: UpdatePreferencesDto) {
-    const updated = await this.usersService.updatePreferences(user.id, dto);
-    return { success: true, message: 'Preferências atualizadas.', data: updated };
+  @ApiStandardResponse(UserPreferencesResponseDto)
+  async updatePreferences(
+    @CurrentUser() user: UserContext,
+    @Body() dto: UpdatePreferencesDto,
+  ) {
+    return this.usersService.updatePreferences(user.id, dto);
   }
 
   @Get('me/accounts')
-  @ApiOperation({ summary: 'Listar todas as contas/empresas nas quais o usuário possui um membership.' })
-  async getAccounts(@CurrentUser() user: any) {
-    const accounts = await this.usersService.getAccounts(user.id);
-    return { success: true, data: accounts };
+  @SuccessMessage(SuccessMessageCode.DATA_RETRIEVED)
+  @ApiOperation({
+    summary:
+      'Listar todas as contas/empresas nas quais o usuário possui um membership.',
+  })
+  async getAccounts(@CurrentUser() user: UserContext) {
+    return this.usersService.getAccounts(user.id);
   }
 
   @Get('me/permissions')
-  @ApiOperation({ summary: 'Retornar a matriz consolidada de permissões baseada no Membership atual.' })
-  async getPermissions(@CurrentUser() user: any) {
-    // Current AccountId can be extracted from JWT or headers. Assuming user.accountId.
-    const accountId = user.accountId;
-    const permissions = await this.usersService.getPermissions(user.id, accountId);
-    return { success: true, data: permissions };
+  @UseGuards(MembershipGuard)
+  @SuccessMessage(SuccessMessageCode.DATA_RETRIEVED)
+  @ApiOperation({
+    summary:
+      'Retornar a matriz consolidada de permissões baseada no Membership atual.',
+    description:
+      'Requer o header `x-account-id` para resolver o Membership ativo.',
+  })
+  @ApiStandardResponse(UserPermissionsResponseDto)
+  async getPermissions(@CurrentMembership() membership: MembershipContext) {
+    return this.usersService.getPermissions(membership.id);
   }
 
   @Get('me/sessions')
+  @SuccessMessage(SuccessMessageCode.SESSIONS_RETRIEVED)
   @ApiOperation({ summary: 'Listar as sessões ativas do usuário.' })
-  async getSessions(@CurrentUser() user: any) {
-    const sessions = await this.usersService.getSessions(user.id);
-    return { success: true, data: sessions };
+  @ApiStandardResponse(SessionResponseDto, { isArray: true })
+  async getSessions(@CurrentUser() user: UserContext) {
+    return this.usersService.getSessions(user.id, user.sessionId);
   }
 
   @Delete('me/sessions/:id')
-  @ApiOperation({ summary: 'Revogar (encerrar) uma sessão específica remotamente.' })
-  async revokeSession(@CurrentUser() user: any, @Param('id') sessionId: string) {
+  @SuccessMessage(SuccessMessageCode.SESSION_REVOKED)
+  @ApiOperation({
+    summary: 'Revogar (encerrar) uma sessão específica remotamente.',
+  })
+  @ApiParam({ name: 'id', description: 'ID (UUID) da sessão.' })
+  async revokeSession(
+    @CurrentUser() user: UserContext,
+    @Param('id') sessionId: string,
+  ) {
     await this.usersService.revokeSession(user.id, sessionId);
-    return { success: true, message: 'Sessão encerrada com sucesso.' };
   }
 
   // ============================================================================
-  // ADMIN PLATAFORMA (Requer permissões RBAC do módulo)
+  // ADMIN DA CONTA (exige Membership ativo + permissão RBAC do módulo `users`)
   // ============================================================================
 
   @Get(':id')
-  @ApiOperation({ summary: 'Recuperar perfil público de um usuário (apenas se pertencer à mesma conta).' })
-  async getPublicProfile(@CurrentUser() user: any, @Param('id') id: string) {
-    const profile = await this.usersService.getPublicProfile(id, user.accountId);
-    return { success: true, data: profile };
+  @UseGuards(MembershipGuard, PermissionGuard)
+  @Permissions('users.read')
+  @SuccessMessage(SuccessMessageCode.DATA_RETRIEVED)
+  @ApiOperation({
+    summary:
+      'Recuperar perfil público de um usuário (apenas se pertencer à mesma conta).',
+    description: 'Requer o header `x-account-id` e a permissão `users.read`.',
+  })
+  @ApiParam({ name: 'id', description: 'ID (UUID) do usuário.' })
+  @ApiStandardResponse(PublicUserResponseDto)
+  async getPublicProfile(
+    @CurrentAccount() account: AccountContext,
+    @Param('id') id: string,
+  ) {
+    return this.usersService.getPublicProfile(id, account.id);
   }
 
   @Get()
-  @ApiOperation({ summary: 'Listagem paginada e filtrada de usuários da conta atual.' })
-  async listUsers(@CurrentUser() user: any, @Query() query: any) {
-    const result = await this.usersService.listUsers(user.accountId, query);
-    return { success: true, data: result.items, meta: result.meta };
+  @UseGuards(MembershipGuard, PermissionGuard)
+  @Permissions('users.read')
+  @SuccessMessage(SuccessMessageCode.DATA_RETRIEVED)
+  @ApiOperation({
+    summary: 'Listagem paginada e filtrada de usuários da conta atual.',
+    description: 'Requer o header `x-account-id` e a permissão `users.read`.',
+  })
+  async listUsers(
+    @CurrentAccount() account: AccountContext,
+    @Query() query: ListUsersQueryDto,
+  ) {
+    return this.usersService.listUsers(account.id, query);
   }
 
   @Post()
-  @ApiOperation({ summary: 'Criar um usuário manualmente e vinculá-lo à conta atual.' })
-  async createUser(@CurrentUser() user: any, @Body() dto: CreateUserAdminDto) {
-    const created = await this.usersService.createUserAdmin(user.accountId, dto);
-    return { success: true, message: 'Usuário convidado com sucesso.', data: this.sanitizeUser(created) };
+  @UseGuards(MembershipGuard, PermissionGuard)
+  @Permissions('users.create')
+  @SuccessMessage(SuccessMessageCode.USER_INVITED)
+  @ApiOperation({
+    summary: 'Criar um usuário manualmente e vinculá-lo à conta atual.',
+    description:
+      'Requer o header `x-account-id` e a permissão `users.create`. Envia e-mail de definição de senha.',
+  })
+  @ApiStandardResponse(UserMeResponseDto, { created: true })
+  async createUser(
+    @CurrentAccount() account: AccountContext,
+    @Body() dto: CreateUserAdminDto,
+  ) {
+    return this.usersService.createUserAdmin(account.id, dto);
   }
 
   @Put(':id')
-  @ApiOperation({ summary: 'Editar dados básicos de um usuário do sistema.' })
-  async updateUser(@CurrentUser() user: any, @Param('id') id: string, @Body() dto: UpdateUserAdminDto) {
-    const updated = await this.usersService.updateUserAdmin(user.accountId, id, dto);
-    return { success: true, message: 'Usuário atualizado com sucesso.', data: this.sanitizeUser(updated) };
+  @UseGuards(MembershipGuard, PermissionGuard)
+  @Permissions('users.update')
+  @SuccessMessage(SuccessMessageCode.USER_UPDATED)
+  @ApiOperation({
+    summary: 'Editar dados básicos de um usuário do sistema.',
+    description: 'Requer o header `x-account-id` e a permissão `users.update`.',
+  })
+  @ApiParam({ name: 'id', description: 'ID (UUID) do usuário.' })
+  @ApiStandardResponse(UserMeResponseDto)
+  async updateUser(
+    @CurrentAccount() account: AccountContext,
+    @Param('id') id: string,
+    @Body() dto: UpdateUserAdminDto,
+  ) {
+    return this.usersService.updateUserAdmin(account.id, id, dto);
   }
 
   @Delete(':id')
   @HttpCode(204)
-  @ApiOperation({ summary: 'Soft delete do usuário da conta.' })
-  async deleteUser(@CurrentUser() user: any, @Param('id') id: string) {
-    await this.usersService.softDeleteUser(user.accountId, id);
+  @SkipTransform()
+  @UseGuards(MembershipGuard, PermissionGuard)
+  @Permissions('users.delete')
+  @ApiOperation({
+    summary: 'Soft delete do usuário da conta.',
+    description: 'Requer o header `x-account-id` e a permissão `users.delete`.',
+  })
+  @ApiParam({ name: 'id', description: 'ID (UUID) do usuário.' })
+  async deleteUser(
+    @CurrentAccount() account: AccountContext,
+    @Param('id') id: string,
+  ) {
+    await this.usersService.softDeleteUser(account.id, id);
   }
 
   @Patch(':id/status')
-  @ApiOperation({ summary: 'Alterar o status de um usuário.' })
-  async updateUserStatus(@CurrentUser() user: any, @Param('id') id: string, @Body() dto: UpdateUserStatusDto) {
-    await this.usersService.updateUserStatus(user.accountId, id, dto);
-    return { success: true, message: 'Status do usuário atualizado com sucesso.' };
-  }
-
-  // ============================================================================
-  // Helpers
-  // ============================================================================
-
-  private sanitizeUser(user: any) {
-    if (user) {
-      delete user.password;
-      delete user.refreshTokenHash;
-      delete user.tokens;
-    }
-    return user;
+  @UseGuards(MembershipGuard, PermissionGuard)
+  @Permissions('users.update')
+  @SuccessMessage(SuccessMessageCode.USER_STATUS_UPDATED)
+  @ApiOperation({
+    summary: 'Alterar o status de um usuário.',
+    description: 'Requer o header `x-account-id` e a permissão `users.update`.',
+  })
+  @ApiParam({ name: 'id', description: 'ID (UUID) do usuário.' })
+  async updateUserStatus(
+    @CurrentAccount() account: AccountContext,
+    @Param('id') id: string,
+    @Body() dto: UpdateUserStatusDto,
+  ) {
+    await this.usersService.updateUserStatus(account.id, id, dto);
   }
 }

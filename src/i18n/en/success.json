@@ -1,0 +1,33 @@
+{
+  "OPERATION_SUCCESS": "Operation completed successfully.",
+
+  "LOGIN_SUCCESS": "Login successful.",
+  "LOGOUT_SUCCESS": "Logout successful.",
+  "LOGOUT_ALL_SUCCESS": "All sessions have been logged out.",
+  "TOKEN_REFRESHED": "Token refreshed successfully.",
+  "ME_RETRIEVED": "Data retrieved successfully.",
+  "ACCOUNT_SWITCHED": "Account switched successfully.",
+  "REGISTER_SUCCESS": "User registered successfully. Please check your email.",
+  "EMAIL_VERIFIED": "Email verified successfully. You can now log in.",
+  "VERIFICATION_RESENT": "If the account exists and is not verified, an email has been sent.",
+  "PASSWORD_RESET_REQUESTED": "If the email exists, password recovery instructions have been sent.",
+  "PASSWORD_RESET_SUCCESS": "Password reset successfully.",
+  "SESSIONS_RETRIEVED": "Sessions retrieved successfully.",
+  "SESSION_REVOKED": "Session revoked successfully.",
+
+  "PROFILE_RETRIEVED": "Profile retrieved successfully.",
+  "PROFILE_UPDATED": "Profile updated successfully.",
+  "AVATAR_UPDATED": "Avatar updated successfully.",
+  "AVATAR_REMOVED": "Avatar removed successfully.",
+  "PASSWORD_CHANGED": "Password updated successfully.",
+  "PREFERENCES_UPDATED": "Preferences updated successfully.",
+  "DATA_RETRIEVED": "Data retrieved successfully.",
+  "USER_INVITED": "User invited successfully.",
+  "USER_UPDATED": "User updated successfully.",
+  "USER_STATUS_UPDATED": "User status updated successfully.",
+
+  "FAQ_CREATED": "FAQ created successfully.",
+  "FAQ_UPDATED": "FAQ updated successfully.",
+  "FAQ_DELETED": "FAQ deleted successfully.",
+  "FAQ_FEEDBACK_REGISTERED": "Feedback registered successfully."
+}

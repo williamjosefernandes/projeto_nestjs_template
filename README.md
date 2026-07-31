@@ -1,6 +1,8 @@
----
+# MadeCoders Backend
 
-[![Swagger UI](https://img.shields.io/badge/Swagger-85EA2D?style=for-the-badge&logo=Swagger&logoColor=white)](http://localhost:3000/swagger)
+API backend do MadeCoders, construída com [NestJS](https://nestjs.com/) e [Prisma](https://www.prisma.io/) sobre PostgreSQL.
+
+[![Swagger UI](https://img.shields.io/badge/Swagger-85EA2D?style=for-the-badge&logo=Swagger&logoColor=white)](http://localhost:3000/api/docs)
 
 ---
 
@@ -12,55 +14,40 @@ Fluxo utilizado: **Git Flow**
 
 ---
 
-# Tutoriais
+## Configuração local
 
-## Executar a sincronização de planetas/artefatos localmente
+1. Copie `.env.example` para `.env` e preencha as variáveis (JWT, SMTP, Firebase — veja os comentários no próprio arquivo).
 
-**_Atenção: Apontar as connection strings para o ambiente local_**
+2. Suba o banco de dados local:
+   ```
+   npm run containers
+   ```
 
-1. Excluir a pasta dist
+3. Instale as dependências:
+   ```
+   npm install
+   ```
 
-2. Parar e remover todos os containers
-```
-docker container stop $(docker container list -qa) && docker container rm $(docker container list -qa)
-```
+4. Rode as migrations e o seed:
+   ```
+   npm run migrations
+   npx prisma db seed
+   ```
 
-3. Parar todos os containers e limpar os dados do Docker
-```
-docker system prune -a -f && docker system prune --volumes -f
-```
+5. Suba a aplicação em modo desenvolvimento:
+   ```
+   npm run start:dev
+   ```
 
-4. Atualizar os pacotes da aplicação
-```
-npm install
-```
+6. Acesse a documentação interativa da API em [http://localhost:3000/api/docs](http://localhost:3000/api/docs).
 
-5. Subir os container auxiliares à aplicação
-```
-docker-compose up -d
-```
+## Scripts úteis
 
-6. Executar as migrations
-```
-npm run migrations
-```
-
-7. Executar a aplicação
-```
-npm run start:dev
-```
-
-8. Executar a request de sincronização de planetas
-```
-  curl -X 'POST' \
-    'http://localhost:3000/planet-sync/sync-all' \
-    -H 'accept: application/json' \
-    -d ''
-```
-
-9. Verificar status da sincronização de planetas
-```
-  curl -X 'GET' \
-    'http://localhost:3000/planet-sync/sync-status' \
-    -H 'accept: */*'
-```
+| Script | Descrição |
+| --- | --- |
+| `npm run start:dev` | Sobe a aplicação com watch mode. |
+| `npm run start:dev-full` | Sobe o banco, roda migrations, abre o Prisma Studio e a aplicação juntos. |
+| `npm run build` | Compila o projeto para `dist/`. |
+| `npm run lint` | Roda o ESLint com auto-fix. |
+| `npm test` | Roda os testes unitários. |
+| `npm run migrate:auto` | Gera e aplica uma nova migration a partir de mudanças no `schema.prisma`. |

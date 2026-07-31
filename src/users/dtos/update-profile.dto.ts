@@ -16,6 +16,8 @@ export class UpdateProfileDto {
 
   @ApiPropertyOptional({ example: '+5511999999999' })
   @IsOptional()
-  @Matches(/^\+[1-9]\d{1,14}$/, { message: 'Telefone deve seguir o padrão E.164' })
+  @Matches(/^\+[1-9]\d{1,14}$/, {
+    message: 'Telefone deve seguir o padrão E.164',
+  })
   phone?: string;
 }

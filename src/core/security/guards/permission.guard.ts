@@ -9,31 +9,35 @@ import { AuthorizationService } from '../services/authorization.service';
 export class PermissionGuard implements CanActivate {
   constructor(
     private readonly reflector: Reflector,
-    private readonly authService: AuthorizationService
+    private readonly authService: AuthorizationService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const requiredPermissions = this.reflector.getAllAndOverride<string[]>(PERMISSIONS_KEY, [
-      context.getHandler(),
-      context.getClass(),
-    ]);
+    const requiredPermissions = this.reflector.getAllAndOverride<string[]>(
+      PERMISSIONS_KEY,
+      [context.getHandler(), context.getClass()],
+    );
 
     if (!requiredPermissions || requiredPermissions.length === 0) {
       return true;
     }
 
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
-    
+
     if (!request.membership || !request.membership.id) {
-       throw new PermissionDeniedException();
+      throw new PermissionDeniedException();
     }
 
-    const userAccess = await this.authService.calculatePermissions(request.membership.id);
+    const userAccess = await this.authService.calculatePermissions(
+      request.membership.id,
+    );
     request.permissions = userAccess.permissions;
     request.menus = userAccess.menus;
     request.components = userAccess.components;
 
-    const hasPermission = requiredPermissions.every((perm) => userAccess.permissions.includes(perm));
+    const hasPermission = requiredPermissions.every((perm) =>
+      userAccess.permissions.includes(perm),
+    );
 
     if (!hasPermission) {
       throw new PermissionDeniedException();

@@ -39,48 +39,52 @@ export class SecurityMembershipService implements ISecurityMembershipService {
     };
   }
 
-  async getProfilePermissions(membershipId: string): Promise<{ code: string; type: string }[]> {
+  async getProfilePermissions(
+    membershipId: string,
+  ): Promise<{ code: string; type: string }[]> {
     const membership = await this.prisma.membership.findUnique({
       where: { id: membershipId },
       include: {
         profile: {
           include: {
             permissions: {
-              include: { permission: true }
-            }
-          }
-        }
-      }
+              include: { permission: true },
+            },
+          },
+        },
+      },
     });
 
     if (!membership || !membership.profile) return [];
 
-    return membership.profile.permissions.map(pp => ({
+    return membership.profile.permissions.map((pp) => ({
       code: pp.permission.code,
-      type: pp.permission.type as string
+      type: pp.permission.type as string,
     }));
   }
 
-  async getPermissionOverrides(membershipId: string): Promise<{ code: string; type: string; isDenied: boolean }[]> {
+  async getPermissionOverrides(
+    membershipId: string,
+  ): Promise<{ code: string; type: string; isDenied: boolean }[]> {
     const membership = await this.prisma.membership.findUnique({
       where: { id: membershipId },
       include: {
         profile: {
           include: {
             overrides: {
-              include: { permission: true }
-            }
-          }
-        }
-      }
+              include: { permission: true },
+            },
+          },
+        },
+      },
     });
 
     if (!membership || !membership.profile) return [];
 
-    return membership.profile.overrides.map(po => ({
+    return membership.profile.overrides.map((po) => ({
       code: po.permission.code,
       type: po.permission.type as string,
-      isDenied: po.effect === 'DENY'
+      isDenied: po.effect === 'DENY',
     }));
   }
 }

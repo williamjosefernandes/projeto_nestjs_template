@@ -2,8 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
 import { CreateFaqDto } from './dtos/create-faq.dto';
 import { UpdateFaqDto } from './dtos/update-faq.dto';
+import { FaqQueryDto } from './dtos/faq-query.dto';
 import { ErrorCode } from '../common/enum/error-code.enum';
 import { NotFoundAppException } from '../common/exceptions/app.exception';
+import { PageMetaDto } from '../common/pagination/pagination-info-response.dto';
 
 @Injectable()
 export class FaqService {
@@ -13,25 +15,34 @@ export class FaqService {
     return this.prisma.fAQ.create({ data });
   }
 
-  async findAll() {
-    return this.prisma.fAQ.findMany({
-      where: { isActive: true },
-      orderBy: { order: 'asc' },
-    });
+  async findAll(query: FaqQueryDto) {
+    const { page, size } = query;
+    const where = { isActive: true };
+
+    const [totalElements, content] = await Promise.all([
+      this.prisma.fAQ.count({ where }),
+      this.prisma.fAQ.findMany({
+        where,
+        orderBy: { order: 'asc' },
+        skip: (page - 1) * size,
+        take: size,
+      }),
+    ]);
+
+    return { ...PageMetaDto.create({ page, size, totalElements }), content };
   }
 
+  /** Busca uma FAQ e registra a visualização — único ponto que incrementa `views`. */
   async findOne(id: string) {
-    const faq = await this.prisma.fAQ.findUnique({ where: { id } });
-    if (!faq) throw new NotFoundAppException(ErrorCode.FAQ_NOT_FOUND);
-    
-    // increment views
+    await this.ensureExists(id);
     return this.prisma.fAQ.update({
       where: { id },
-      data: { views: { increment: 1 } }
+      data: { views: { increment: 1 } },
     });
   }
 
   async update(id: string, data: UpdateFaqDto) {
+    await this.ensureExists(id);
     return this.prisma.fAQ.update({
       where: { id },
       data,
@@ -39,23 +50,27 @@ export class FaqService {
   }
 
   async remove(id: string) {
+    await this.ensureExists(id);
     return this.prisma.fAQ.delete({
       where: { id },
     });
   }
 
   async markHelpful(id: string, isHelpful: boolean) {
-    const faq = await this.findOne(id);
-    if (isHelpful) {
-      return this.prisma.fAQ.update({
-        where: { id },
-        data: { helpful: { increment: 1 } },
-      });
-    } else {
-      return this.prisma.fAQ.update({
-        where: { id },
-        data: { notHelpful: { increment: 1 } },
-      });
-    }
+    await this.ensureExists(id);
+    return this.prisma.fAQ.update({
+      where: { id },
+      data: isHelpful
+        ? { helpful: { increment: 1 } }
+        : { notHelpful: { increment: 1 } },
+    });
+  }
+
+  private async ensureExists(id: string): Promise<void> {
+    const faq = await this.prisma.fAQ.findUnique({
+      where: { id },
+      select: { id: true },
+    });
+    if (!faq) throw new NotFoundAppException(ErrorCode.FAQ_NOT_FOUND);
   }
 }

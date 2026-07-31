@@ -8,16 +8,18 @@ import { addMinutes, addDays } from 'date-fns';
 import { PrismaService } from '../database/prisma.service';
 import { UsersService } from '../users/users.service';
 import { EmailService } from '../email/email.service';
+import { AuthorizationService } from '../core/security/services/authorization.service';
 
 import { LoginDto } from './dtos/login.dto';
 import { RegisterDto } from './dtos/register.dto';
 import { ResetPasswordDto } from './dtos/password-reset.dto';
 import { LoginResponseDto } from './dtos/auth-response.dto';
 import { SessionResponseDto } from './dtos/session.dto';
-import { FirebaseAuthService, FirebaseIdentity } from '../firebase/firebase-auth.service';
+import {
+  FirebaseAuthService,
+  FirebaseIdentity,
+} from '../firebase/firebase-auth.service';
 import { AuthProvider } from '@prisma/client';
-import { ApiResponseDto } from '../common/dto/api-response.dto';
-import { generateRequestId } from '../common/utils/request-id.util';
 import { ErrorCode } from '../common/enum/error-code.enum';
 import {
   AppException,
@@ -39,13 +41,15 @@ export class AuthService {
     private readonly configService: ConfigService,
     private readonly emailService: EmailService,
     private readonly firebaseAuthService: FirebaseAuthService,
+    private readonly authorizationService: AuthorizationService,
   ) {}
 
   async login(
     loginDto: LoginDto,
     meta: { ipAddress?: string; userAgent?: string },
-  ): Promise<ApiResponseDto<LoginResponseDto>> {
-    const isLocal = !loginDto.authProvider || loginDto.authProvider === AuthProvider.LOCAL;
+  ): Promise<LoginResponseDto> {
+    const isLocal =
+      !loginDto.authProvider || loginDto.authProvider === AuthProvider.LOCAL;
 
     let user: Awaited<ReturnType<UsersService['findByEmail']>>;
 
@@ -65,7 +69,10 @@ export class AuthService {
       if (!user.password) {
         throw new UnauthorizedAppException(ErrorCode.INVALID_CREDENTIALS);
       }
-      const isPasswordValid = await bcrypt.compare(loginDto.password, user.password);
+      const isPasswordValid = await bcrypt.compare(
+        loginDto.password,
+        user.password,
+      );
       if (!isPasswordValid) {
         throw new UnauthorizedAppException(ErrorCode.INVALID_CREDENTIALS);
       }
@@ -78,12 +85,17 @@ export class AuthService {
       if (!loginDto.firebaseToken) {
         throw new BadRequestAppException(ErrorCode.FIREBASE_TOKEN_NOT_PROVIDED);
       }
-      const identity = await this.firebaseAuthService.verifyIdToken(loginDto.firebaseToken);
+      const identity = await this.firebaseAuthService.verifyIdToken(
+        loginDto.firebaseToken,
+      );
       if (!identity) {
         throw new UnauthorizedAppException(ErrorCode.INVALID_FIREBASE_TOKEN);
       }
 
-      user = await this.findOrProvisionFirebaseUser(identity, loginDto.authProvider);
+      user = await this.findOrProvisionFirebaseUser(
+        identity,
+        loginDto.authProvider,
+      );
       if (user.status !== 'ACTIVE') {
         throw new ForbiddenAppException(ErrorCode.ACCOUNT_INACTIVE);
       }
@@ -120,19 +132,17 @@ export class AuthService {
     await this.usersService.update(user.id, { lastLoginAt: new Date() });
 
     // Generate JWT Access Token
-    const { accessToken, expiresIn } = this.generateAccessToken(user.id, sessionId, currentMembershipId);
+    const { accessToken, expiresIn } = this.generateAccessToken(
+      user.id,
+      sessionId,
+      currentMembershipId,
+    );
 
     return {
-      success: true,
-      timestamp: new Date().toISOString(),
-      message: 'Login realizado com sucesso.',
-      requestId: generateRequestId(),
-      data: {
-        auth: { accessToken, refreshToken, expiresIn },
-        user: context.user,
-        currentAccount: context.currentAccount,
-        accounts: context.accounts,
-      },
+      auth: { accessToken, refreshToken, expiresIn },
+      user: context.user,
+      currentAccount: context.currentAccount,
+      accounts: context.accounts,
     };
   }
 
@@ -151,7 +161,10 @@ export class AuthService {
     });
   }
 
-  async refreshToken(refreshToken: string, meta: { ipAddress?: string; userAgent?: string }) {
+  async refreshToken(
+    refreshToken: string,
+    _meta: { ipAddress?: string; userAgent?: string },
+  ) {
     try {
       const payload = this.jwtService.verify(refreshToken, {
         secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
@@ -180,7 +193,7 @@ export class AuthService {
 
       // Rotation
       const newRefreshToken = this.generateRefreshToken(user.id, session.id);
-      
+
       await this.prisma.session.update({
         where: { id: session.id },
         data: {
@@ -189,13 +202,14 @@ export class AuthService {
         },
       });
 
-      const { accessToken, expiresIn } = this.generateAccessToken(user.id, session.id, session.currentMembershipId);
+      const { accessToken, expiresIn } = this.generateAccessToken(
+        user.id,
+        session.id,
+        session.currentMembershipId,
+      );
       const context = await this.loadContext(user, session.currentMembershipId);
 
       return {
-        success: true,
-        timestamp: new Date().toISOString(),
-        message: 'Token atualizado com sucesso.',
         auth: {
           accessToken,
           refreshToken: newRefreshToken,
@@ -204,7 +218,7 @@ export class AuthService {
         user: context.user,
         currentAccount: context.currentAccount,
         accounts: context.accounts,
-      } as any;
+      };
     } catch (error) {
       if (error instanceof AppException) throw error;
       throw new UnauthorizedAppException(ErrorCode.INVALID_REFRESH_TOKEN);
@@ -213,14 +227,20 @@ export class AuthService {
 
   async getMe(userId: string, sessionId: string) {
     const user = await this.usersService.findById(userId);
-    const session = await this.prisma.session.findUnique({ where: { id: sessionId } });
+    const session = await this.prisma.session.findUnique({
+      where: { id: sessionId },
+    });
     const currentMembershipId = session ? session.currentMembershipId : null;
 
     const context = await this.loadContext(user, currentMembershipId);
     return context;
   }
 
-  async switchAccount(userId: string, sessionId: string, newMembershipId: string) {
+  async switchAccount(
+    userId: string,
+    sessionId: string,
+    newMembershipId: string,
+  ) {
     const membership = await this.prisma.membership.findFirst({
       where: { id: newMembershipId, userId, status: 'ACTIVE' },
     });
@@ -236,14 +256,17 @@ export class AuthService {
 
     const user = await this.usersService.findById(userId);
     const context = await this.loadContext(user, newMembershipId);
-    const { accessToken, expiresIn } = this.generateAccessToken(userId, sessionId, newMembershipId);
+    const { accessToken, expiresIn } = this.generateAccessToken(
+      userId,
+      sessionId,
+      newMembershipId,
+    );
 
-    const session = await this.prisma.session.findUnique({ where: { id: sessionId } });
+    const session = await this.prisma.session.findUnique({
+      where: { id: sessionId },
+    });
 
     return {
-      success: true,
-      timestamp: new Date().toISOString(),
-      message: 'Conta alterada com sucesso.',
       auth: {
         accessToken,
         refreshToken: session?.refreshToken || '',
@@ -252,7 +275,7 @@ export class AuthService {
       user: context.user,
       currentAccount: context.currentAccount,
       accounts: context.accounts,
-    } as any;
+    };
   }
 
   async register(registerDto: RegisterDto) {
@@ -261,7 +284,10 @@ export class AuthService {
       throw new ConflictAppException(ErrorCode.EMAIL_ALREADY_IN_USE);
     }
 
-    const hashedPassword = await bcrypt.hash(registerDto.password, this.bcryptRounds);
+    const hashedPassword = await bcrypt.hash(
+      registerDto.password,
+      this.bcryptRounds,
+    );
     const user = await this.usersService.create({
       username: registerDto.email,
       email: registerDto.email,
@@ -282,14 +308,19 @@ export class AuthService {
     });
 
     // Fire email async (could use EventEmitter)
-    await this.emailService.sendVerificationCode(user.firstName, user.email, verificationCode);
+    await this.emailService.sendVerificationCode(
+      user.firstName,
+      user.email,
+      verificationCode,
+    );
 
     return { userId: user.id };
   }
 
   async verifyEmail(email: string, code: string) {
     const user = await this.usersService.findByEmail(email);
-    if (!user) throw new BadRequestAppException(ErrorCode.INVALID_VERIFICATION_CODE);
+    if (!user)
+      throw new BadRequestAppException(ErrorCode.INVALID_VERIFICATION_CODE);
 
     const token = await this.prisma.token.findFirst({
       where: {
@@ -336,7 +367,11 @@ export class AuthService {
       },
     });
 
-    await this.emailService.sendVerificationCode(user.firstName, user.email, verificationCode);
+    await this.emailService.sendVerificationCode(
+      user.firstName,
+      user.email,
+      verificationCode,
+    );
   }
 
   async forgotPassword(email: string) {
@@ -381,8 +416,11 @@ export class AuthService {
       throw new BadRequestAppException(ErrorCode.RESET_TOKEN_EXPIRED);
     }
 
-    const hashedPassword = await bcrypt.hash(dto.newPassword, this.bcryptRounds);
-    
+    const hashedPassword = await bcrypt.hash(
+      dto.newPassword,
+      this.bcryptRounds,
+    );
+
     await this.prisma.user.update({
       where: { id: foundToken.userId },
       data: { password: hashedPassword },
@@ -396,7 +434,10 @@ export class AuthService {
     await this.logoutAll(foundToken.userId);
   }
 
-  async getSessions(userId: string, currentSessionId: string): Promise<SessionResponseDto[]> {
+  async getSessions(
+    userId: string,
+    currentSessionId: string,
+  ): Promise<SessionResponseDto[]> {
     const sessions = await this.prisma.session.findMany({
       where: { userId, revokedAt: null },
       orderBy: { updatedAt: 'desc' },
@@ -433,7 +474,10 @@ export class AuthService {
    *      Firebase Phone Auth com o mesmo número).
    * Só provisiona uma conta nova se nenhuma dessas buscas encontrar nada.
    */
-  private async findOrProvisionFirebaseUser(identity: FirebaseIdentity, declaredProvider: AuthProvider) {
+  private async findOrProvisionFirebaseUser(
+    identity: FirebaseIdentity,
+    declaredProvider: AuthProvider,
+  ) {
     const byUid = await this.usersService.findByUsername(identity.uid);
     if (byUid) return byUid;
 
@@ -458,7 +502,11 @@ export class AuthService {
     }
 
     const username = identity.email || identity.phoneNumber || identity.uid;
-    return this.provisionUserFromFirebaseIdentity(identity, username, declaredProvider);
+    return this.provisionUserFromFirebaseIdentity(
+      identity,
+      username,
+      declaredProvider,
+    );
   }
 
   /** Cria o usuário local na primeira vez que ele faz login por um provedor federado. */
@@ -468,7 +516,9 @@ export class AuthService {
     declaredProvider: AuthProvider,
   ) {
     const displayName = (identity.displayName || '').trim();
-    const [firstName, ...rest] = displayName ? displayName.split(/\s+/) : ['Usuário'];
+    const [firstName, ...rest] = displayName
+      ? displayName.split(/\s+/)
+      : ['Usuário'];
 
     return this.usersService.create({
       firstName,
@@ -479,13 +529,20 @@ export class AuthService {
       phone: identity.phoneNumber,
       avatar: identity.photoURL,
       status: 'ACTIVE',
-      authProvider: this.resolveAuthProvider(identity.signInProvider, declaredProvider),
-      emailVerifiedAt: identity.email && identity.emailVerified ? new Date() : null,
+      authProvider: this.resolveAuthProvider(
+        identity.signInProvider,
+        declaredProvider,
+      ),
+      emailVerifiedAt:
+        identity.email && identity.emailVerified ? new Date() : null,
     } as any);
   }
 
   /** O provedor do token verificado é a fonte confiável; o valor enviado pelo cliente é só um fallback. */
-  private resolveAuthProvider(signInProvider: string | null, declared: AuthProvider): AuthProvider {
+  private resolveAuthProvider(
+    signInProvider: string | null,
+    declared: AuthProvider,
+  ): AuthProvider {
     const bySignInProvider: Record<string, AuthProvider> = {
       'google.com': AuthProvider.GOOGLE,
       'apple.com': AuthProvider.APPLE,
@@ -497,7 +554,10 @@ export class AuthService {
     return (signInProvider && bySignInProvider[signInProvider]) || declared;
   }
 
-  private async loadContext(user: any, membershipId: string | null): Promise<any> {
+  private async loadContext(
+    user: any,
+    membershipId: string | null,
+  ): Promise<any> {
     const userDto = {
       id: user.id,
       email: user.email,
@@ -529,42 +589,13 @@ export class AuthService {
       return { user: userDto, accounts };
     }
 
-    const membership = allMemberships.find(m => m.id === membershipId);
+    const membership = allMemberships.find((m) => m.id === membershipId);
     if (!membership) return { user: userDto, accounts };
 
-    const fullProfile = await this.prisma.profile.findUnique({
-      where: { id: membership.profileId },
-      include: {
-        permissions: { include: { permission: true } },
-        overrides: { include: { permission: true } },
-      },
-    });
-
-    const permMap = new Map<string, string>();
-    
-    if (fullProfile) {
-      fullProfile.permissions.forEach((p: any) => {
-        permMap.set(p.permission.code, p.permission.type);
-      });
-
-      fullProfile.overrides.forEach((o: any) => {
-        if (o.effect === 'ALLOW') {
-          permMap.set(o.permission.code, o.permission.type);
-        } else {
-          permMap.delete(o.permission.code);
-        }
-      });
-    }
-
-    const permissions: string[] = [];
-    const menus: string[] = [];
-    const components: string[] = [];
-
-    Array.from(permMap.entries()).forEach(([code, type]) => {
-      permissions.push(code);
-      if (type === 'MENU') menus.push(code);
-      if (type === 'COMPONENT') components.push(code);
-    });
+    // Fonte única do cálculo de permissões/menus/componentes (com cache) —
+    // antes reimplementado aqui em paralelo a `AuthorizationService.calculatePermissions`.
+    const { permissions, menus, components } =
+      await this.authorizationService.calculatePermissions(membership.id);
 
     return {
       user: userDto,
@@ -591,7 +622,11 @@ export class AuthService {
     };
   }
 
-  private generateAccessToken(userId: string, sessionId: string, membershipId: string | null) {
+  private generateAccessToken(
+    userId: string,
+    sessionId: string,
+    membershipId: string | null,
+  ) {
     const payload = { sub: userId, sessionId, membershipId };
     const expiresInSec = 900; // 15 mins
     return {

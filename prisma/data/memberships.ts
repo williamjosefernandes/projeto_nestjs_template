@@ -1,5 +1,5 @@
 export const memberships = [
-  { userEmail: 'admin@madecoders.com', accountSlug: 'madecoders', profileName: 'Owner', isDefault: true },
+  { userEmail: 'williamjosefernandes@gmail.com', accountSlug: 'madecoders', profileName: 'Owner', isDefault: true },
   
   // Acme Corp
   { userEmail: 'alice@acmecorp.com', accountSlug: 'acme-corp', profileName: 'Administrador', isDefault: true },

@@ -1,13 +1,13 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import * as admin from 'firebase-admin';
-import { firebaseApp } from './firebase.service';
 import { firestore } from 'firebase-admin';
+import { FIREBASE_APP } from './firebase.constants';
 
 @Injectable()
 export class FirestoreService {
   db: admin.firestore.Firestore;
 
-  constructor() {
+  constructor(@Inject(FIREBASE_APP) firebaseApp: admin.app.App) {
     this.db = firebaseApp.firestore();
   }
 
@@ -122,7 +122,7 @@ export class FirestoreService {
 
   async getAll(
     collectionPath: string,
-    p: (string | string[])[],
+    _fields: (string | string[])[],
   ): Promise<any[]> {
     const snapshot = await this.db.collection(collectionPath).get();
     const documents: any[] = [];
@@ -250,7 +250,7 @@ export class FirestoreService {
     collectionPath: string,
     callback: (docs: any) => void,
   ): Promise<void> {
-    return new Promise<void>((resolve, reject) => {
+    return new Promise<void>((resolve) => {
       const collectionRef = this.db.collection(collectionPath);
 
       return collectionRef.onSnapshot((snapshot) => {
