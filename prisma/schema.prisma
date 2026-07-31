@@ -440,6 +440,23 @@ enum TypePermission {
   API
 }
 
+model PermissionGroup {
+  id String @id @default(uuid(7)) @db.Uuid
+
+  name String @unique @db.VarChar(100)
+
+  active Boolean @default(true)
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  permissions Permission[]
+
+  @@map("permission_groups")
+}
+
 model Permission {
   id String @id @default(uuid(7)) @db.Uuid
 
@@ -447,7 +464,7 @@ model Permission {
 
   name String @db.VarChar(150)
 
-  module String? @db.VarChar(100)
+  permissionGroupId String? @db.Uuid
 
   description String? @db.VarChar(500)
 
@@ -459,11 +476,13 @@ model Permission {
 
   // Relations
 
+  group PermissionGroup? @relation(fields: [permissionGroupId], references: [id])
+
   profiles ProfilePermission[]
 
   overrides PermissionOverride[]
 
-  @@index([module])
+  @@index([permissionGroupId])
   @@map("permissions")
 }
 

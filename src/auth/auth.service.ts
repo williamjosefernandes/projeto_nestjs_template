@@ -418,9 +418,12 @@ export class AuthService {
     const components: string[] = [];
 
     Array.from(permMap.entries()).forEach(([code, type]) => {
-      if (type === 'API') permissions.push(code);
-      else if (type === 'MENU') menus.push(code);
-      else if (type === 'COMPONENT') components.push(code);
+      // Frontend espera TODAS as permissões na chave 'permissions' para verificação
+      permissions.push(code);
+
+      // Além disso, agrupamos para possível uso de layout dinâmico futuro
+      if (type === 'MENU') menus.push(code);
+      if (type === 'COMPONENT') components.push(code);
     });
 
     return {

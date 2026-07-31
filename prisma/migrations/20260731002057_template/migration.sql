@@ -194,11 +194,22 @@ CREATE TABLE "profiles" (
 );
 
 -- CreateTable
+CREATE TABLE "permission_groups" (
+    "id" UUID NOT NULL,
+    "name" VARCHAR(100) NOT NULL,
+    "active" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "permission_groups_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "permissions" (
     "id" UUID NOT NULL,
     "code" VARCHAR(150) NOT NULL,
     "name" VARCHAR(150) NOT NULL,
-    "module" VARCHAR(100),
+    "permissionGroupId" UUID,
     "description" VARCHAR(500),
     "type" "TypePermission" NOT NULL DEFAULT 'API',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -514,10 +525,13 @@ CREATE UNIQUE INDEX "memberships_accountId_userId_key" ON "memberships"("account
 CREATE UNIQUE INDEX "profiles_accountId_name_key" ON "profiles"("accountId", "name");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "permission_groups_name_key" ON "permission_groups"("name");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "permissions_code_key" ON "permissions"("code");
 
 -- CreateIndex
-CREATE INDEX "permissions_module_idx" ON "permissions"("module");
+CREATE INDEX "permissions_permissionGroupId_idx" ON "permissions"("permissionGroupId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "profile_permissions_profileId_permissionId_key" ON "profile_permissions"("profileId", "permissionId");
@@ -656,6 +670,9 @@ ALTER TABLE "memberships" ADD CONSTRAINT "memberships_profileId_fkey" FOREIGN KE
 
 -- AddForeignKey
 ALTER TABLE "profiles" ADD CONSTRAINT "profiles_accountId_fkey" FOREIGN KEY ("accountId") REFERENCES "accounts"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "permissions" ADD CONSTRAINT "permissions_permissionGroupId_fkey" FOREIGN KEY ("permissionGroupId") REFERENCES "permission_groups"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "profile_permissions" ADD CONSTRAINT "profile_permissions_profileId_fkey" FOREIGN KEY ("profileId") REFERENCES "profiles"("id") ON DELETE CASCADE ON UPDATE CASCADE;

@@ -8,8 +8,17 @@ export const profilePermissions = [
     profile: 'Administrador',
     permissions: [
       'menu.dashboard',
-      'dashboard.finances.chart',
-      'dashboard.metrics.view',
+      'dashboard.indicadores.visualizar',
+      'dashboard.desempenho.visualizar',
+      'dashboard.atividades.visualizar',
+      'dashboard.agenda.visualizar',
+      'dashboard.notificacoes.visualizar',
+      'dashboard.top_produtos.visualizar',
+      'dashboard.financeiro.visualizar',
+      'dashboard.indicadores.receita',
+      'dashboard.indicadores.novos_clientes',
+      'dashboard.indicadores.aulas_agendadas',
+      'dashboard.indicadores.conversoes',
 
       'menu.users',
       'users.read',
@@ -36,8 +45,13 @@ export const profilePermissions = [
     profile: 'Gerente',
     permissions: [
       'menu.dashboard',
-      'dashboard.metrics.view',
-      'dashboard.finances.chart',
+      'dashboard.indicadores.visualizar',
+      'dashboard.desempenho.visualizar',
+      'dashboard.atividades.visualizar',
+      'dashboard.agenda.visualizar',
+      'dashboard.financeiro.visualizar',
+      'dashboard.indicadores.receita',
+      'dashboard.indicadores.novos_clientes',
 
       'menu.users',
       'users.read',
@@ -52,7 +66,10 @@ export const profilePermissions = [
     profile: 'Usuário',
     permissions: [
       'menu.dashboard',
-      'dashboard.metrics.view',
+      'dashboard.indicadores.visualizar',
+      'dashboard.agenda.visualizar',
+      'dashboard.notificacoes.visualizar',
+
     ],
   },
 ];

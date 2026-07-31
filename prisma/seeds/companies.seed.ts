@@ -6,16 +6,15 @@ export async function seedCompanies(
 ): Promise<void> {
   console.log('🏢 Seeding companies...');
 
-  for (const [i, company] of companies.entries()) {
-    const account = await prisma.account.upsert({
-      where: { slug: `company-${i + 1}` },
-      update: {},
-      create: {
-        type: 'COMPANY',
-        name: company.corporateName,
-        slug: `company-${i + 1}`,
-      },
+  for (const company of companies) {
+    const account = await prisma.account.findUnique({
+      where: { slug: company.accountSlug },
     });
+
+    if (!account) {
+      console.warn(`⚠️ Account ${company.accountSlug} not found. Skipping company.`);
+      continue;
+    }
 
     await prisma.company.upsert({
       where: {

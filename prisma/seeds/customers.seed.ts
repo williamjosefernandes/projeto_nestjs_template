@@ -9,13 +9,13 @@ export async function seedCustomers(
   for (const customer of customers) {
     const account = await prisma.account.findUnique({
       where: {
-        slug: customer.accountCode,
+        slug: customer.accountSlug,
       },
     });
 
     if (!account) {
       console.warn(
-        `⚠️ Account ${customer.accountCode} not found. Skipping customer.`,
+        `⚠️ Account ${customer.accountSlug} not found. Skipping customer.`,
       );
       continue;
     }
