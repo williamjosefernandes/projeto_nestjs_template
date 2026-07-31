@@ -1,4 +1,7 @@
 -- CreateEnum
+CREATE TYPE "AuthProvider" AS ENUM ('LOCAL', 'PHONE', 'GOOGLE', 'APPLE', 'FACEBOOK');
+
+-- CreateEnum
 CREATE TYPE "UserStatus" AS ENUM ('PENDING_EMAIL', 'ACTIVE', 'BLOCKED', 'SUSPENDED');
 
 -- CreateEnum
@@ -65,6 +68,7 @@ CREATE TABLE "users" (
     "phone" VARCHAR(20),
     "avatar" VARCHAR(1000),
     "status" "UserStatus" NOT NULL DEFAULT 'PENDING_EMAIL',
+    "authProvider" "AuthProvider" NOT NULL DEFAULT 'LOCAL',
     "theme" "Theme" NOT NULL DEFAULT 'SYSTEM',
     "language" "Language" NOT NULL DEFAULT 'PT_BR',
     "timeFormat" "TimeFormat" NOT NULL DEFAULT 'H24',

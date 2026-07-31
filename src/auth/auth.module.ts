@@ -10,12 +10,14 @@ import { UsersModule } from '../users/users.module';
 import { EmailModule } from '../email/email.module';
 import { PrismaService } from '../database/prisma.service';
 import { GuardsModule } from './guards/guards.module';
+import { FirebaseModule } from '../firebase/firebase.module';
 
 @Module({
   imports: [
     UsersModule,
     EmailModule,
     GuardsModule,
+    FirebaseModule,
     PassportModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],

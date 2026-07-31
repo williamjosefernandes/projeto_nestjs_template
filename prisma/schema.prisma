@@ -19,6 +19,14 @@ datasource db {
 // Enums globais e de Domínio
 // ============================================================================
 
+enum AuthProvider {
+  LOCAL
+  PHONE
+  GOOGLE
+  APPLE
+  FACEBOOK
+}
+
 enum UserStatus {
   PENDING_EMAIL
   ACTIVE
@@ -149,8 +157,9 @@ model User {
   email     String     @unique @db.VarChar(255)
   password  String     @db.VarChar(255)
   phone     String?    @db.VarChar(20)
-  avatar    String?    @db.VarChar(1000)
-  status    UserStatus @default(PENDING_EMAIL)
+  avatar       String?       @db.VarChar(1000)
+  status       UserStatus    @default(PENDING_EMAIL)
+  authProvider AuthProvider  @default(LOCAL)
 
   theme      Theme      @default(SYSTEM)
   language   Language   @default(PT_BR)

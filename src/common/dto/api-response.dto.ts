@@ -16,6 +16,9 @@ export class ApiResponseDto<T = any> {
   timestamp: string;
 
   @ApiProperty({ required: false })
+  message?: string;
+
+  @ApiProperty({ required: false })
   data?: T;
 
   @ApiProperty({ required: false })

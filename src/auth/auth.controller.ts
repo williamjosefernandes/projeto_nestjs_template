@@ -1,5 +1,5 @@
 import { Controller, Post, Body, HttpCode, HttpStatus, UseGuards, Get, Req, Delete, Param } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
+import { ApiTags, ApiBearerAuth, ApiOperation, ApiOkResponse, ApiExtraModels, getSchemaPath } from '@nestjs/swagger';
 import { Request } from 'express';
 
 import { AuthService } from './auth.service';
@@ -9,12 +9,16 @@ import { RefreshTokenDto } from './dtos/refresh-token.dto';
 import { ForgotPasswordDto, ResetPasswordDto } from './dtos/password-reset.dto';
 import { VerifyEmailDto, ResendEmailVerificationDto } from './dtos/email-verification.dto';
 import { SwitchAccountDto } from './dtos/switch-account.dto';
+import { LoginResponseDto } from './dtos/auth-response.dto';
 import { Public } from '../common/decorators/public.decorator';
+import { SkipTransform } from '../common/decorators/skip-transform.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { ApiResponseDto } from '../common/dto/api-response.dto';
 
 @ApiTags('Authentication')
 @Controller('api/v1/auth')
+@SkipTransform()
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
@@ -22,11 +26,19 @@ export class AuthController {
   @Post('login')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Autenticar usuário e obter contexto completo' })
+  @ApiExtraModels(ApiResponseDto, LoginResponseDto)
+  @ApiOkResponse({
+    schema: {
+      allOf: [
+        { $ref: getSchemaPath(ApiResponseDto) },
+        { properties: { data: { $ref: getSchemaPath(LoginResponseDto) } } },
+      ],
+    },
+  })
   async login(@Body() dto: LoginDto, @Req() req: Request) {
     const ipAddress = (req.headers['x-forwarded-for'] || req.ip || req.socket.remoteAddress) as string;
     const userAgent = req.headers['user-agent'] || 'Unknown';
-    const data = await this.authService.login(dto, { ipAddress, userAgent });
-    return { success: true, message: 'Login realizado com sucesso.', data };
+    return this.authService.login(dto, { ipAddress, userAgent });
   }
 
   @ApiBearerAuth()
@@ -36,7 +48,7 @@ export class AuthController {
   @ApiOperation({ summary: 'Encerrar sessão atual' })
   async logout(@CurrentUser() user: any) {
     await this.authService.logout(user.sessionId);
-    return { success: true, message: 'Logout realizado com sucesso.', data: null };
+    return { success: true, timestamp: new Date().toISOString(), message: 'Logout realizado com sucesso.' };
   }
 
   @ApiBearerAuth()
@@ -46,7 +58,7 @@ export class AuthController {
   @ApiOperation({ summary: 'Encerrar todas as sessões do usuário' })
   async logoutAll(@CurrentUser() user: any) {
     await this.authService.logoutAll(user.id);
-    return { success: true, message: 'Todas as sessões foram encerradas.', data: null };
+    return { success: true, timestamp: new Date().toISOString(), message: 'Todas as sessões foram encerradas.' };
   }
 
   @Public()
@@ -56,8 +68,7 @@ export class AuthController {
   async refreshToken(@Body() dto: RefreshTokenDto, @Req() req: Request) {
     const ipAddress = (req.headers['x-forwarded-for'] || req.ip || req.socket.remoteAddress) as string;
     const userAgent = req.headers['user-agent'] || 'Unknown';
-    const data = await this.authService.refreshToken(dto.refreshToken, { ipAddress, userAgent });
-    return { success: true, message: 'Token atualizado com sucesso.', data };
+    return this.authService.refreshToken(dto.refreshToken, { ipAddress, userAgent });
   }
 
   @ApiBearerAuth()
@@ -65,8 +76,13 @@ export class AuthController {
   @Get('me')
   @ApiOperation({ summary: 'Retornar dados do usuário autenticado e contexto atual' })
   async getMe(@CurrentUser() user: any) {
-    const data = await this.authService.getMe(user.id, user.sessionId);
-    return { success: true, message: 'Dados recuperados com sucesso.', data };
+    const context = await this.authService.getMe(user.id, user.sessionId);
+    return {
+      success: true,
+      timestamp: new Date().toISOString(),
+      message: 'Dados recuperados com sucesso.',
+      ...context,
+    };
   }
 
   @ApiBearerAuth()
@@ -75,8 +91,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Trocar o contexto do tenant sem necessidade de novo login' })
   async switchAccount(@Body() dto: SwitchAccountDto, @CurrentUser() user: any) {
-    const data = await this.authService.switchAccount(user.id, user.sessionId, dto.membershipId);
-    return { success: true, message: 'Conta alterada com sucesso.', data };
+    return this.authService.switchAccount(user.id, user.sessionId, dto.membershipId);
   }
 
   @Public()
@@ -84,8 +99,13 @@ export class AuthController {
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Criar um novo usuário' })
   async register(@Body() dto: RegisterDto) {
-    const data = await this.authService.register(dto);
-    return { success: true, message: 'Usuário registrado com sucesso. Verifique seu e-mail.', data };
+    const { userId } = await this.authService.register(dto);
+    return {
+      success: true,
+      timestamp: new Date().toISOString(),
+      message: 'Usuário registrado com sucesso. Verifique seu e-mail.',
+      userId,
+    };
   }
 
   @Public()
@@ -94,7 +114,7 @@ export class AuthController {
   @ApiOperation({ summary: 'Confirmar o e-mail do usuário recém cadastrado' })
   async verifyEmail(@Body() dto: VerifyEmailDto) {
     await this.authService.verifyEmail(dto.email, dto.code);
-    return { success: true, message: 'E-mail verificado com sucesso. Você já pode fazer login.', data: null };
+    return { success: true, timestamp: new Date().toISOString(), message: 'E-mail verificado com sucesso. Você já pode fazer login.' };
   }
 
   @Public()
@@ -103,7 +123,7 @@ export class AuthController {
   @ApiOperation({ summary: 'Reenviar e-mail de confirmação' })
   async resendVerification(@Body() dto: ResendEmailVerificationDto) {
     await this.authService.resendVerification(dto.email);
-    return { success: true, message: 'Se a conta existir e não estiver verificada, um e-mail foi enviado.', data: null };
+    return { success: true, timestamp: new Date().toISOString(), message: 'Se a conta existir e não estiver verificada, um e-mail foi enviado.' };
   }
 
   @Public()
@@ -112,7 +132,7 @@ export class AuthController {
   @ApiOperation({ summary: 'Solicitar recuperação de senha' })
   async forgotPassword(@Body() dto: ForgotPasswordDto) {
     await this.authService.forgotPassword(dto.email);
-    return { success: true, message: 'Se o e-mail existir, enviamos instruções para recuperar a senha.', data: null };
+    return { success: true, timestamp: new Date().toISOString(), message: 'Se o e-mail existir, enviamos instruções para recuperar a senha.' };
   }
 
   @Public()
@@ -121,7 +141,7 @@ export class AuthController {
   @ApiOperation({ summary: 'Definir nova senha através de token' })
   async resetPassword(@Body() dto: ResetPasswordDto) {
     await this.authService.resetPassword(dto);
-    return { success: true, message: 'Senha redefinida com sucesso.', data: null };
+    return { success: true, timestamp: new Date().toISOString(), message: 'Senha redefinida com sucesso.' };
   }
 
   @ApiBearerAuth()
@@ -129,8 +149,8 @@ export class AuthController {
   @Get('sessions')
   @ApiOperation({ summary: 'Listar sessões e dispositivos ativos' })
   async getSessions(@CurrentUser() user: any) {
-    const data = await this.authService.getSessions(user.id, user.sessionId);
-    return { success: true, message: 'Sessões recuperadas com sucesso.', data };
+    const sessions = await this.authService.getSessions(user.id, user.sessionId);
+    return { success: true, timestamp: new Date().toISOString(), message: 'Sessões recuperadas com sucesso.', sessions };
   }
 
   @ApiBearerAuth()
@@ -139,6 +159,6 @@ export class AuthController {
   @ApiOperation({ summary: 'Desconectar um dispositivo específico remotamente' })
   async revokeSession(@Param('id') id: string, @CurrentUser() user: any) {
     await this.authService.revokeSession(user.id, id);
-    return { success: true, message: 'Sessão revogada com sucesso.', data: null };
+    return { success: true, timestamp: new Date().toISOString(), message: 'Sessão revogada com sucesso.' };
   }
 }

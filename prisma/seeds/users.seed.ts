@@ -20,6 +20,7 @@ export async function seedUsers(
         password: passwordHash,
         status: UserStatus.ACTIVE,
         emailVerifiedAt: new Date(),
+        authProvider: 'LOCAL',
       },
       create: {
         firstName: user.firstName,
@@ -27,6 +28,7 @@ export async function seedUsers(
         email: user.email,
         password: passwordHash,
         status: UserStatus.ACTIVE,
+        authProvider: 'LOCAL',
         emailVerifiedAt: new Date(),
       },
     });

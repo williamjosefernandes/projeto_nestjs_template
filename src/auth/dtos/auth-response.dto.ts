@@ -1,14 +1,26 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { AuthProvider } from '@prisma/client';
+
+export class AuthTokensDto {
+  @ApiProperty()
+  accessToken!: string;
+
+  @ApiProperty()
+  refreshToken!: string;
+
+  @ApiProperty()
+  expiresIn!: number;
+}
 
 export class UserResponseDto {
   @ApiProperty()
-  id: string;
+  id!: string;
 
   @ApiProperty()
-  email: string;
+  email!: string;
 
   @ApiProperty()
-  firstName: string;
+  firstName!: string;
 
   @ApiProperty({ required: false })
   lastName?: string;
@@ -17,81 +29,97 @@ export class UserResponseDto {
   avatar?: string;
 
   @ApiProperty()
-  emailVerified: boolean;
+  emailVerified!: boolean;
 
   @ApiProperty()
-  status: string;
+  status!: string;
+
+  @ApiProperty({ enum: AuthProvider })
+  authProvider!: AuthProvider;
 }
 
-export class AccountResponseDto {
+export class CurrentMembershipDto {
   @ApiProperty()
-  id: string;
+  id!: string;
 
   @ApiProperty()
-  name: string;
+  isOwner!: boolean;
 
   @ApiProperty()
-  type: string;
+  status!: string;
+}
+
+export class CurrentProfileDto {
+  @ApiProperty()
+  id!: string;
+
+  @ApiProperty()
+  code!: string;
+
+  @ApiProperty()
+  name!: string;
+}
+
+export class CurrentAccountDto {
+  @ApiProperty()
+  id!: string;
+
+  @ApiProperty()
+  type!: string;
+
+  @ApiProperty()
+  name!: string;
 
   @ApiProperty({ required: false })
-  avatar?: string;
+  logo?: string;
+
+  @ApiProperty()
+  membership!: CurrentMembershipDto;
+
+  @ApiProperty()
+  profile!: CurrentProfileDto;
+
+  @ApiProperty({ type: [String] })
+  permissions!: string[];
+
+  @ApiProperty({ type: [String] })
+  menus!: string[];
+
+  @ApiProperty({ type: [String] })
+  components!: string[];
 }
 
-export class MembershipResponseDto {
+export class AccountListItemDto {
   @ApiProperty()
-  id: string;
+  id!: string;
 
   @ApiProperty()
-  status: string;
-}
-
-export class ProfileResponseDto {
-  @ApiProperty()
-  id: string;
+  name!: string;
 
   @ApiProperty()
-  name: string;
-}
-
-export class AuthResponseDto {
-  @ApiProperty()
-  accessToken: string;
-
-  @ApiProperty()
-  refreshToken: string;
-
-  @ApiProperty()
-  expiresIn: number;
-
-  @ApiProperty()
-  user: UserResponseDto;
+  type!: string;
 
   @ApiProperty({ required: false })
-  currentAccount?: AccountResponseDto;
+  logo?: string;
 
-  @ApiProperty({ required: false })
-  currentMembership?: MembershipResponseDto;
-
-  @ApiProperty({ required: false })
-  profile?: ProfileResponseDto;
-
-  @ApiProperty({ type: [String], required: false })
-  permissions?: string[];
-
-  @ApiProperty({ type: [String], required: false })
-  menus?: string[];
-
-  @ApiProperty({ type: [String], required: false })
-  components?: string[];
+  @ApiProperty()
+  profile!: string;
 }
 
-export class RefreshTokenResponseDto {
+/**
+ * Recurso retornado pelo login — mesclado na raiz de `ApiSuccessResponse<LoginResponseDto>`
+ * (ver `src/common/dto/api-response.dto.ts`), junto com `success`/`timestamp`/`message`/`requestId`.
+ */
+export class LoginResponseDto {
   @ApiProperty()
-  accessToken: string;
+  auth!: AuthTokensDto;
 
   @ApiProperty()
-  refreshToken: string;
+  user!: UserResponseDto;
 
-  @ApiProperty()
-  expiresIn: number;
+  @ApiProperty({ required: false })
+  currentAccount?: CurrentAccountDto;
+
+  @ApiProperty({ type: [AccountListItemDto], required: false })
+  accounts?: AccountListItemDto[];
 }

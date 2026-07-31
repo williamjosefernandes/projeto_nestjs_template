@@ -19,8 +19,12 @@ import { EmailService } from '../email/email.service';
 import { LoginDto } from './dtos/login.dto';
 import { RegisterDto } from './dtos/register.dto';
 import { ResetPasswordDto } from './dtos/password-reset.dto';
-import { AuthResponseDto } from './dtos/auth-response.dto';
+import { LoginResponseDto } from './dtos/auth-response.dto';
 import { SessionResponseDto } from './dtos/session.dto';
+import { FirebaseAuthService } from '../firebase/firebase-auth.service';
+import { AuthProvider } from '@prisma/client';
+import { ApiResponseDto } from '../common/dto/api-response.dto';
+import { generateRequestId } from '../common/utils/request-id.util';
 
 @Injectable()
 export class AuthService {
@@ -33,9 +37,13 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     private readonly emailService: EmailService,
+    private readonly firebaseAuthService: FirebaseAuthService,
   ) {}
 
-  async login(loginDto: LoginDto, meta: { ipAddress?: string; userAgent?: string }): Promise<AuthResponseDto> {
+  async login(
+    loginDto: LoginDto,
+    meta: { ipAddress?: string; userAgent?: string },
+  ): Promise<ApiResponseDto<LoginResponseDto>> {
     const user = await this.usersService.findByEmail(loginDto.email);
     if (!user) {
       throw new UnauthorizedException('Credenciais inválidas');
@@ -45,13 +53,27 @@ export class AuthService {
       throw new ForbiddenException(`Conta inativa ou suspensa.`);
     }
 
-    const isPasswordValid = await bcrypt.compare(loginDto.password, user.password);
-    if (!isPasswordValid) {
-      throw new UnauthorizedException('Credenciais inválidas');
-    }
+    const isLocal = !loginDto.authProvider || loginDto.authProvider === AuthProvider.LOCAL;
 
-    if (!user.emailVerifiedAt) {
-      throw new ForbiddenException('E-mail não verificado');
+    if (isLocal) {
+      if (!loginDto.password) {
+        throw new BadRequestException('Senha não informada');
+      }
+      const isPasswordValid = await bcrypt.compare(loginDto.password, user.password);
+      if (!isPasswordValid) {
+        throw new UnauthorizedException('Credenciais inválidas');
+      }
+      if (!user.emailVerifiedAt) {
+        throw new ForbiddenException('E-mail não verificado');
+      }
+    } else {
+      if (!loginDto.firebaseToken) {
+        throw new BadRequestException('Token do Firebase não fornecido');
+      }
+      const uid = await this.firebaseAuthService.verifyIdToken(loginDto.firebaseToken);
+      if (!uid) {
+        throw new UnauthorizedException('Token do Firebase inválido');
+      }
     }
 
     // Load Memberships
@@ -88,16 +110,16 @@ export class AuthService {
     const { accessToken, expiresIn } = this.generateAccessToken(user.id, sessionId, currentMembershipId);
 
     return {
-      accessToken,
-      refreshToken,
-      expiresIn,
-      user: context.user,
-      currentAccount: context.currentAccount,
-      currentMembership: context.currentMembership,
-      profile: context.profile,
-      permissions: context.permissions,
-      menus: context.menus,
-      components: context.components,
+      success: true,
+      timestamp: new Date().toISOString(),
+      message: 'Login realizado com sucesso.',
+      requestId: generateRequestId(),
+      data: {
+        auth: { accessToken, refreshToken, expiresIn },
+        user: context.user,
+        currentAccount: context.currentAccount,
+        accounts: context.accounts,
+      },
     };
   }
 
@@ -152,17 +174,18 @@ export class AuthService {
       const context = await this.loadContext(user, session.currentMembershipId);
 
       return {
-        accessToken,
-        refreshToken: newRefreshToken,
-        expiresIn,
+        success: true,
+        timestamp: new Date().toISOString(),
+        message: 'Token atualizado com sucesso.',
+        auth: {
+          accessToken,
+          refreshToken: newRefreshToken,
+          expiresIn,
+        },
         user: context.user,
         currentAccount: context.currentAccount,
-        currentMembership: context.currentMembership,
-        profile: context.profile,
-        permissions: context.permissions,
-        menus: context.menus,
-        components: context.components,
-      };
+        accounts: context.accounts,
+      } as any;
     } catch (error) {
       throw new UnauthorizedException('Invalid refresh token');
     }
@@ -195,17 +218,21 @@ export class AuthService {
     const context = await this.loadContext(user, newMembershipId);
     const { accessToken, expiresIn } = this.generateAccessToken(userId, sessionId, newMembershipId);
 
+    const session = await this.prisma.session.findUnique({ where: { id: sessionId } });
+
     return {
-      accessToken,
-      expiresIn,
+      success: true,
+      timestamp: new Date().toISOString(),
+      message: 'Conta alterada com sucesso.',
+      auth: {
+        accessToken,
+        refreshToken: session?.refreshToken || '',
+        expiresIn,
+      },
       user: context.user,
       currentAccount: context.currentAccount,
-      currentMembership: context.currentMembership,
-      profile: context.profile,
-      permissions: context.permissions,
-      menus: context.menus,
-      components: context.components,
-    };
+      accounts: context.accounts,
+    } as any;
   }
 
   async register(registerDto: RegisterDto) {
@@ -220,7 +247,8 @@ export class AuthService {
       password: hashedPassword,
       firstName: registerDto.firstName,
       lastName: registerDto.lastName || '',
-    });
+      authProvider: AuthProvider.LOCAL,
+    } as any);
 
     const verificationCode = this.generateEmailVerificationCode();
     await this.prisma.token.create({
@@ -366,7 +394,7 @@ export class AuthService {
 
   // Helper Methods
 
-  private async loadContext(user: any, membershipId: string | null) {
+  private async loadContext(user: any, membershipId: string | null): Promise<any> {
     const userDto = {
       id: user.id,
       email: user.email,
@@ -375,50 +403,62 @@ export class AuthService {
       avatar: user.avatar,
       emailVerified: !!user.emailVerifiedAt,
       status: user.status,
+      authProvider: user.authProvider,
     };
 
-    if (!membershipId) {
-      return { user: userDto };
-    }
-
-    const membership = await this.prisma.membership.findUnique({
-      where: { id: membershipId },
+    const allMemberships = await this.prisma.membership.findMany({
+      where: { userId: user.id, status: 'ACTIVE' },
       include: {
         account: true,
-        profile: {
-          include: {
-            permissions: { include: { permission: true } },
-            overrides: { include: { permission: true } },
-          },
-        },
+        profile: true,
       },
     });
 
-    if (!membership) return { user: userDto };
+    const accounts = allMemberships.map((m) => ({
+      id: m.account.id,
+      name: m.account.name,
+      type: m.account.type,
+      logo: (m.account as any).logo || m.account.avatar,
+      profile: m.profile.name.toUpperCase(),
+    }));
+
+    if (!membershipId) {
+      return { user: userDto, accounts };
+    }
+
+    const membership = allMemberships.find(m => m.id === membershipId);
+    if (!membership) return { user: userDto, accounts };
+
+    const fullProfile = await this.prisma.profile.findUnique({
+      where: { id: membership.profileId },
+      include: {
+        permissions: { include: { permission: true } },
+        overrides: { include: { permission: true } },
+      },
+    });
 
     const permMap = new Map<string, string>();
     
-    membership.profile.permissions.forEach(p => {
-      permMap.set(p.permission.code, p.permission.type);
-    });
+    if (fullProfile) {
+      fullProfile.permissions.forEach((p: any) => {
+        permMap.set(p.permission.code, p.permission.type);
+      });
 
-    membership.profile.overrides.forEach(o => {
-      if (o.effect === 'ALLOW') {
-        permMap.set(o.permission.code, o.permission.type);
-      } else {
-        permMap.delete(o.permission.code);
-      }
-    });
+      fullProfile.overrides.forEach((o: any) => {
+        if (o.effect === 'ALLOW') {
+          permMap.set(o.permission.code, o.permission.type);
+        } else {
+          permMap.delete(o.permission.code);
+        }
+      });
+    }
 
     const permissions: string[] = [];
     const menus: string[] = [];
     const components: string[] = [];
 
     Array.from(permMap.entries()).forEach(([code, type]) => {
-      // Frontend espera TODAS as permissões na chave 'permissions' para verificação
       permissions.push(code);
-
-      // Além disso, agrupamos para possível uso de layout dinâmico futuro
       if (type === 'MENU') menus.push(code);
       if (type === 'COMPONENT') components.push(code);
     });
@@ -427,21 +467,24 @@ export class AuthService {
       user: userDto,
       currentAccount: {
         id: membership.account.id,
-        name: membership.account.name,
         type: membership.account.type,
-        avatar: membership.account.avatar,
+        name: membership.account.name,
+        logo: (membership.account as any).logo || membership.account.avatar,
+        membership: {
+          id: membership.id,
+          isOwner: membership.profile.name.toUpperCase() === 'OWNER',
+          status: membership.status,
+        },
+        profile: {
+          id: membership.profile.id,
+          code: membership.profile.name.toUpperCase(),
+          name: membership.profile.name,
+        },
+        permissions,
+        menus,
+        components,
       },
-      currentMembership: {
-        id: membership.id,
-        status: membership.status,
-      },
-      profile: {
-        id: membership.profile.id,
-        name: membership.profile.name,
-      },
-      permissions,
-      menus,
-      components,
+      accounts,
     };
   }
 
