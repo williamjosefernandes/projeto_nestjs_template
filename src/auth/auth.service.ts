@@ -292,14 +292,32 @@ export class AuthService {
       registerDto.password,
       this.bcryptRounds,
     );
-    const user = await this.usersService.create({
-      username: registerDto.email,
-      email: registerDto.email,
-      password: hashedPassword,
-      firstName: registerDto.firstName,
-      lastName: registerDto.lastName || '',
-      authProvider: AuthProvider.LOCAL,
-    } as any);
+
+    // User + OnboardingDraft nascem juntos: o wizard de /cadastro já pode
+    // persistir progresso (PATCH /v1/onboarding/draft/*) assim que o e-mail
+    // for confirmado, sem uma chamada extra de "inicializar rascunho".
+    const user = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.user.create({
+        data: {
+          username: registerDto.email,
+          email: registerDto.email,
+          password: hashedPassword,
+          firstName: registerDto.firstName,
+          lastName: registerDto.lastName || '',
+          authProvider: AuthProvider.LOCAL,
+        },
+      });
+
+      await tx.onboardingDraft.create({
+        data: {
+          userId: created.id,
+          accountType: registerDto.accountType,
+          step: 'account-type',
+        },
+      });
+
+      return created;
+    });
 
     const verificationCode = this.generateEmailVerificationCode();
     await this.prisma.token.create({
@@ -570,7 +588,8 @@ export class AuthService {
     return (signInProvider && bySignInProvider[signInProvider]) || declared;
   }
 
-  private async loadContext(
+  /** Não-privado de propósito: `OnboardingService.complete()` reaproveita (mesmo padrão de contexto de `switchAccount`). */
+  async loadContext(
     user: any,
     membershipId: string | null,
   ): Promise<any> {
@@ -643,7 +662,8 @@ export class AuthService {
     };
   }
 
-  private generateAccessToken(
+  /** Não-privado de propósito: `OnboardingService.complete()` reaproveita para emitir tokens escopados à conta recém-criada. */
+  generateAccessToken(
     userId: string,
     sessionId: string,
     membershipId: string | null,

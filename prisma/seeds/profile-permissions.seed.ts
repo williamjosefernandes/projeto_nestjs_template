@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { profilePermissions } from '../data/profile-permissions';
+import { profilePermissions } from '../../src/core/security/provisioning/default-profiles.data';
 
 export async function seedProfilePermissions(
   prisma: PrismaClient,

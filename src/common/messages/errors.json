@@ -43,5 +43,8 @@
   "INVALID_RESET_TOKEN": "Invalid password reset token.",
   "RESET_TOKEN_EXPIRED": "Password reset token expired.",
 
-  "FAQ_NOT_FOUND": "FAQ not found."
+  "FAQ_NOT_FOUND": "FAQ not found.",
+
+  "DOCUMENT_ALREADY_IN_USE": "This CPF/CNPJ is already registered for another account.",
+  "PHONE_ALREADY_IN_USE": "This phone number is already registered for another account."
 }

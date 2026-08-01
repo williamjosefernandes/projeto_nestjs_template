@@ -1,5 +1,5 @@
 import { PrismaClient, ProfileType } from '@prisma/client';
-import { systemProfiles } from '../data/profiles';
+import { systemProfiles } from '../../src/core/security/provisioning/default-profiles.data';
 
 export async function seedProfiles(
   prisma: PrismaClient,

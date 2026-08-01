@@ -46,6 +46,8 @@ async function bootstrap() {
     .addBearerAuth()
     .addTag('Authentication')
     .addTag('Identity / Users')
+    .addTag('Onboarding')
+    .addTag('Geografia')
     .addTag('Perguntas Frequentes')
     .build();
 

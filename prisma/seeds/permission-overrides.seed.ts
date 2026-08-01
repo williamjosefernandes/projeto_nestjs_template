@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { permissionOverrides } from '../data/permission-overrides';
+import { permissionOverrides } from '../../src/core/security/provisioning/default-profiles.data';
 
 export async function seedPermissionOverrides(
   prisma: PrismaClient,

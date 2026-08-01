@@ -29,5 +29,9 @@
   "FAQ_CREATED": "FAQ created successfully.",
   "FAQ_UPDATED": "FAQ updated successfully.",
   "FAQ_DELETED": "FAQ deleted successfully.",
-  "FAQ_FEEDBACK_REGISTERED": "Feedback registered successfully."
+  "FAQ_FEEDBACK_REGISTERED": "Feedback registered successfully.",
+
+  "ONBOARDING_STEP_SAVED": "Step saved successfully.",
+  "ONBOARDING_DRAFT_DISCARDED": "Onboarding draft discarded successfully.",
+  "ONBOARDING_COMPLETED": "Onboarding completed successfully. Welcome!"
 }

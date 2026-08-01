@@ -178,14 +178,43 @@ model User {
   updatedAt       DateTime  @updatedAt
   deletedAt       DateTime?
 
-  memberships    Membership[]
-  sessions       Session[]
-  socialAccounts SocialAccount[]
-  tokens         Token[]
-  tickets        TicketHelpdesk[]
-  ticketMessages TicketMessage[]
+  /// Consentimento com Termos de Uso/Política de Privacidade da plataforma —
+  /// capturado uma única vez, na conclusão do primeiro onboarding
+  /// (`POST /v1/onboarding/complete`). É por usuário (plataforma), não por conta.
+  termsAcceptedAt   DateTime?
+  termsVersion      String?   @db.VarChar(20)
+  privacyAcceptedAt DateTime?
+  privacyVersion    String?   @db.VarChar(20)
+
+  memberships     Membership[]
+  sessions        Session[]
+  socialAccounts  SocialAccount[]
+  tokens          Token[]
+  tickets         TicketHelpdesk[]
+  ticketMessages  TicketMessage[]
+  onboardingDraft OnboardingDraft?
 
   @@map("users")
+}
+
+/// Rascunho do wizard de cadastro (onboarding) — estado de processo, não dado
+/// de domínio final. 1:1 com o usuário; apagado ao concluir `POST
+/// /v1/onboarding/complete` (vira Account/Membership/Customer|Company/Address
+/// de verdade). `payload` é validado por DTO forte em cada PATCH — o JSON aqui
+/// só acumula sub-objetos já validados (personalData/companyData/address/
+/// personalization), não é o ponto de validação de negócio.
+model OnboardingDraft {
+  id          String      @id @default(uuid(7)) @db.Uuid
+  userId      String      @unique @db.Uuid
+  accountType AccountType
+  step        String      @db.VarChar(50)
+  payload     Json        @default("{}")
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("onboarding_drafts")
 }
 
 model Session {

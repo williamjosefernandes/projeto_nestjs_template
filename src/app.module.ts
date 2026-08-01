@@ -6,6 +6,8 @@ import { DatabaseModule } from './database/database.module';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { FaqModule } from './faq/faq.module';
+import { OnboardingModule } from './onboarding/onboarding.module';
+import { GeoModule } from './geo/geo.module';
 import { SecurityModule } from './core/security/security.module';
 import {
   appConfig,
@@ -32,6 +34,8 @@ import { TransformInterceptor } from './common/interceptors/transform.intercepto
     UsersModule,
     AuthModule,
     FaqModule,
+    OnboardingModule,
+    GeoModule,
     SecurityModule,
   ],
   providers: [

@@ -57,4 +57,8 @@ export enum ErrorCode {
 
   // FAQ
   FAQ_NOT_FOUND = 'FAQ_NOT_FOUND',
+
+  // Onboarding
+  DOCUMENT_ALREADY_IN_USE = 'DOCUMENT_ALREADY_IN_USE',
+  PHONE_ALREADY_IN_USE = 'PHONE_ALREADY_IN_USE',
 }
